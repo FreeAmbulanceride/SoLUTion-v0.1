@@ -20,7 +20,9 @@ a.btn:active,button:active{transform:translateY(1px)}
 .container{max-width:1100px;margin:0 auto;padding:24px}
 .card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));
   border:1px solid var(--ui-border); border-radius:16px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,.25)}
-/* Landing */
+
+  
+  /* Landing */
 .hero{padding:64px 0}
 h1{margin:0 0 6px;font-size:28px}
 .lead{margin:0 0 18px;color:var(--ui-text-muted)}
@@ -63,12 +65,17 @@ canvas.hidden{display:none}
 @media (max-width:900px) and (orientation:landscape){
   #stage{min-height:calc(100dvh - 8px)}
 }
+  #landing{ transition: opacity .25s ease, transform .25s ease; }
+#landing.is-hiding{ opacity:0; transform: translateY(-8px); }
+#landing[hidden]{ display:none !important; }
 </style>
 </head>
 <body>
 
+
 <!-- Landing -->
 <section class="hero">
+  <section id="landing" class="hero">
   <div class="container">
     <div class="card">
       <h1>On-Set Color & Composition Metering</h1>
@@ -169,12 +176,22 @@ $('#startBtn').addEventListener('click', init);
 devSel.addEventListener('change',()=>start(devSel.value));
 navigator.mediaDevices?.addEventListener?.('devicechange', listDevices);
 
-/* ===== Landing → Studio (no stray text) ===== */
+// Landing → Studio (fade out landing, then hide)
 $('#openStudio').addEventListener('click', async ()=>{
-  $('#studio').hidden=false;
-  try{ $('#studio').scrollIntoView({behavior:'smooth',block:'start'}); }catch(_){}
-  try{ await init(); }catch(_){}
+  const landing = $('#landing');
+  const studio  = $('#studio');
+
+  studio.hidden = false;              // reveal studio first
+  try { await init(); } catch(_) {}   // start camera (secure-context gated)
+
+  // fade the landing, then remove from layout
+  landing.classList.add('is-hiding');
+  landing.addEventListener('transitionend', () => landing.hidden = true, { once:true });
+
+  // scroll to studio just in case
+  try { studio.scrollIntoView({ behavior:'smooth', block:'start' }); } catch(_) {}
 });
+
 
 /* ===== Ghost overlay controls ===== */
 const refUpload=$('#refUpload'), grabRefBtn=$('#grabRef'), overlayMode=$('#overlayMode'),

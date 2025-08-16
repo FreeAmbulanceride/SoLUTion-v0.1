@@ -25,34 +25,46 @@ soluyion
         transition:transform .08s ease, filter .12s ease }
   .btn:hover{ filter:brightness(1.05) } .btn:active{ transform:translateY(1px) }
 
-  /* landing */
-  .hero{
-    min-height:100dvh; display:grid; place-items:center; padding:24px;
-    background: radial-gradient(60% 60% at 70% 10%,
-                color-mix(in oklab, var(--ui-accent) 14%, transparent), transparent 60%),
-                var(--ui-primary);
-  }
-  #landing{ transition:opacity .25s ease, transform .25s ease }
-  #landing.is-hiding{ opacity:0; transform:translateY(-8px) }
-  #landing[hidden]{ display:none!important }
+/* landing */
+.hero{
+  min-height: 100dvh;
+  display:grid; place-items:center;
+  padding:24px;
+  background:
+    radial-gradient(60% 60% at 70% 10%, color-mix(in oklab, var(--ui-accent) 14%, transparent), transparent 60%),
+    var(--ui-primary);
+}
 
-  /* Card with background image */
-  .hero .card{
-    position:relative; overflow:hidden; padding:0;
-    width:min(900px,96vw); border-radius:16px;
-    background:var(--ui-secondary); border:1px solid var(--ui-border);
-    box-shadow:0 24px 80px rgba(0,0,0,.45);
-  }
-  .card .bg{
-    position:absolute; inset:0;
-    background:var(--hero, url('https://freeambulanceride.github.io/SoLUTion-v0.1/soLUTion1a.png
-')) center/cover no-repeat;
-    filter:saturate(110%) contrast(1.05) brightness(.85);
-    transform:scale(1.02);
-  }
-  .card .scrim{ position:absolute; inset:0;
-    background:linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.55)) }
-  .card .content{ position:relative; z-index:1; padding:28px; display:grid; gap:12px }
+/* lock scrolling on landing only */
+body.lock{ overflow:hidden; }
+
+/* Card with background image */
+.hero .card{
+  position:relative;
+  overflow:hidden;
+  padding:0;
+  border-radius:16px;
+  background:var(--ui-secondary);
+  border:1px solid var(--ui-border);
+  box-shadow:0 24px 80px rgba(0,0,0,.45);
+  min-height: 360px;                 /* ensure the bg has space to show */
+}
+
+/* Image layer */
+.card .bg{
+  position:absolute; inset:0;
+  background:var(--hero, url('/SoLUTion-v0.1/soLUTion1a.png')) center/cover no-repeat;
+  filter:saturate(110%) contrast(1.05) brightness(.85);
+  transform:scale(1.02);
+}
+
+/* Dark scrim for legibility */
+.card .scrim{ position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.55)); }
+
+/* Foreground content */
+.card .content{ position:relative; z-index:1; padding:28px; display:grid; gap:12px; }
+
   .hero h1{ margin:0 0 6px; font-size:28px }
   .hero p{ margin:8px 0 18px; color:var(--ui-text-muted) }
   .hero .actions{ display:flex; gap:12px; flex-wrap:wrap }
@@ -104,15 +116,13 @@ soluyion
 <body>
 
 <section id="landing" class="hero">
-  <div class="card" style="--hero:url('./SoLUTion-v0.1/soLUTion1a.png')">
+  <div class="card" style="--hero:url('/SoLUTion-v0.1/soLUTion1a.png?v=2')">
     <div class="bg"></div>
     <div class="scrim"></div>
     <div class="content">
       <h1>On-Set Color &amp; Composition Studio</h1>
       <p>Live 60/30/10 color balance. Reference ghost/wipe. Golden-ratio grid &amp; focal dot.</p>
-      <div class="actions">
-        <button id="openStudio" class="btn">Open studio</button>
-      </div>
+      <div class="actions"><button id="openStudio" class="btn">Open studio</button></div>
       <p class="small" style="opacity:.85">Camera requires HTTPS or <code>http://localhost</code>. Mobile supported.</p>
     </div>
   </div>

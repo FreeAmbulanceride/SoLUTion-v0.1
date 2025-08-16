@@ -125,6 +125,11 @@ canvas.overlay{ position:absolute; inset:0; pointer-events:none; border-radius:1
 canvas.hidden{ display:none }
 
 .overlayHUD{ position:absolute; left:12px; right:12px; bottom:12px; display:flex; flex-direction:column; gap:8px; pointer-events:none }
+
+.overlayHUD .readout,
+.overlayHUD .readout * {
+  pointer-events: auto;
+}
 .bars{ display:grid; gap:6px; background:rgba(0,0,0,.35); padding:10px; border-radius:10px; border:1px solid var(--ui-border) }
 .bar{ position:relative; height:22px; background:#222; border-radius:6px; overflow:hidden }
 .fill{ height:100% }

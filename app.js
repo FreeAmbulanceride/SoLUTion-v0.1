@@ -17,6 +17,33 @@ function updRange(el){
   el.style.setProperty('--pct', pct + '%');
 }
 
+let prevScoreInt = null;  // tracks last integer score
+
+/* ===== audio cue when score hits 100 ===== */
+let audioCtx;
+function ensureAudio(){
+  try{
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }catch(_){ /* ignore */ }
+}
+function playChime(){
+  ensureAudio();
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(880, now);          // A5
+  g.gain.setValueAtTime(0.0001, now);            // fade-in
+  g.gain.exponentialRampToValueAtTime(0.2, now + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.18); // quick fade-out
+  o.connect(g).connect(audioCtx.destination);
+  o.start(now);
+  o.stop(now + 0.2);
+}
+
+
 /* =========================
    Landing → Studio
 ========================= */
@@ -34,13 +61,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Open Studio
   $('#openStudio')?.addEventListener('click', async () => {
+   ensureAudio(); 
     if (!(await ensureEntitled())) return;
     showStudio();
   });
 
   // Also expose Start Camera
-  $('#startBtn')?.addEventListener('click', init);
-
+  $('#startBtn')?.addEventListener('click', () => {
+  ensureAudio();                  // <-- add this
+  init();
+  });
   // overlay mode → show/hide wipe slider
   $('#overlayMode')?.addEventListener('change', () => {
     $('#wipeWrap').style.display = $('#overlayMode').value === 'wipe' ? 'inline-block' : 'none';
@@ -545,6 +575,11 @@ function loop(){
   const {score, tag, actual} = grade6010(pcts);
   actualEl.textContent = `${actual[0]} / ${actual[1]} / ${actual[2]}`;
   scoreEl.textContent = score; scoreEl.className = `tag ${tag}`;
+   // celebrate hitting 100 (only on the transition into 100)
+if (prevScoreInt !== 100 && score === 100) {
+  playChime();
+}
+prevScoreInt = score;
 
   // Golden HUD
   if ($('#phiOn').checked){

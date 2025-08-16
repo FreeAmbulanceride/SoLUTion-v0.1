@@ -211,6 +211,10 @@
         </label>
         <label>opacity <input id="alpha" type="range" min="0" max="100" value="45"></label>
       </div>
+      
+<div class="group">
+  <button id="btnCapture" class="btn">Capture photo</button>
+</div>
 
       <div class="group">
         <label>scale <input id="scale" type="range" min="50" max="150" value="100"></label>
@@ -281,6 +285,95 @@
 /* ========= tiny helpers ========= */
 const $ = sel => document.querySelector(sel);
 
+
+<script>
+// ---- Capture & Save (cross-platform best-effort) ----
+
+// Compose the exact frame as seen: video fitted into the visible rect + overlay canvas
+async function captureFrameToBlob(includeOverlay = true){
+  const W = gcv.width || v.clientWidth || v.videoWidth || 1280;
+  const H = gcv.height || v.clientHeight || v.videoHeight || 720;
+
+  // Render at display resolution for a WYSIWYG capture
+  const oc = document.createElement('canvas');
+  oc.width = W; oc.height = H;
+  const octx = oc.getContext('2d');
+
+  // Black background (matches video element background)
+  octx.fillStyle = '#000';
+  octx.fillRect(0, 0, W, H);
+
+  // Draw the video scaled like the UI does
+  const rect = (typeof getFrameRect === 'function')
+    ? getFrameRect()
+    : {x:0, y:0, w:W, h:H};
+  // draw full video scaled into the rect
+  try {
+    octx.drawImage(v, rect.x, rect.y, rect.w, rect.h);
+  } catch(_) {
+    // if the video isn't ready, bail gracefully
+  }
+
+  // Draw the overlay (ghost/grid/phi) exactly as seen
+  if (includeOverlay && gcv) {
+    octx.drawImage(gcv, 0, 0, W, H);
+  }
+
+  // JPEG is smaller and easier to share; tune quality as you like
+  const blob = await new Promise(res => oc.toBlob(res, 'image/jpeg', 0.92));
+  return blob;
+}
+
+async function saveCapture(){
+  try{
+    // Let the UI paint one more frame before we snapshot
+    await new Promise(r => requestAnimationFrame(r));
+
+    const blob = await captureFrameToBlob(true);
+    if (!blob) return;
+
+    const filename = `6010-capture-${new Date().toISOString().replace(/[:.]/g,'-')}.jpg`;
+    const file = new File([blob], filename, { type: 'image/jpeg' });
+
+    // Preferred: system share sheet (iOS/Android)
+    if (navigator.canShare?.({ files:[file] })) {
+      await navigator.share({
+        files: [file],
+        title: '60/30/10 capture',
+        text: 'Captured with 60/30/10 Studio'
+      });
+      return;
+    }
+
+    // Fallback: download (great on Android/desktop)
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+
+    // iOS Safari often ignores programmatic downloads — open new tab as last resort
+    const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isiOS) {
+      setTimeout(() => { window.open(url, '_blank'); }, 350);
+      // user can long-press → “Save Image” (goes to Photos)
+    }
+
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
+  }catch(e){
+    console.warn('Capture/share failed:', e);
+    alert('Could not save the photo. Try again or long-press the image if a new tab opened.');
+  }
+}
+
+// Wire up the button
+document.getElementById('btnCapture')?.addEventListener('click', saveCapture);
+</script>
+
+
+  
 /* ========= theme (kept, default to teal–mango) ========= */
 function updRange(el){
   const min = +el.min || 0, max = +el.max || 100, val = +el.value || 0;

@@ -80,6 +80,8 @@ body.lock{ overflow:hidden }
 .hero .actions{ display:flex; gap:12px; flex-wrap:wrap }
 
 /* Studio */
+.overlayHUD .readout { position: relative; z-index: 5; }
+
 #studio{ min-height:100dvh; padding:10px 10px 24px; }
 header.toolbar{
   position: sticky; top:0; z-index:10;

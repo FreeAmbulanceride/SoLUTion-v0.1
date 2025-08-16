@@ -48,9 +48,16 @@ Hit the 60/30/10 balance with live bars and a running accuracy score, line up sh
         <span id="err" role="status" aria-live="polite"></span>
 
         <div class="group">
-          <label><input type="checkbox" id="inclNeutrals" checked> include neutrals</label>
-          <label class="muted">K=<span id="kval">3</span></label>
-        </div>
+  <label><input type="checkbox" id="inclNeutrals" checked> include neutrals</label>
+  <label class="muted">K=<span id="kval">3</span></label>
+
+  <!-- NEW: min saturation cutoff (0.00–0.40) -->
+  <label class="muted" style="display:flex; align-items:center; gap:6px;">
+    min sat
+    <input id="satCutoff" type="range" min="0" max="40" value="12" />
+    <span id="satCutoffVal">0.12</span>
+  </label>
+</div>
 
         <div class="group">
           <label>Ref still <input id="refUpload" type="file" accept="image/*" /></label>

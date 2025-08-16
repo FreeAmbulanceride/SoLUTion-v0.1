@@ -1,26 +1,24 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>60:30:10 Color Monitor • Overlay • Golden HUD</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>60/30/10 Monitor • Ghost Overlay • Golden HUD</title>
 
-<!-- Optional web font (keeps everything from looking “Times-y”), with safe fallbacks -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <!-- Preload the landing hero image ) -->
+  <link rel="preload" as="image" href="/SoLUTion-v0.1/soLUTion1a.png?v=2" />
 
-<style>
-  :root{
-    --ui-primary:#0B1220;   /* 60% */
-    --ui-secondary:#172036; /* 30% */
-    --ui-accent:#F59E0B;    /* 10% */
-    --ui-text:#EDEFF2;
-    --ui-text-muted:#B8C2D6;
-    --ui-border:rgba(255,255,255,0.08);
-    --ui-surface:rgba(255,255,255,0.05);
-    --ui-ring:rgba(245,158,11,0.55);
-  }
+  <style>
+    :root{
+      --ui-primary:#0B1220; --ui-secondary:#172036; --ui-accent:#F59E0B;
+      --ui-text:#EDEFF2; --ui-text-muted:#B8C2D6;
+      --ui-border:rgba(255,255,255,0.08); --ui-surface:rgba(255,255,255,0.05);
+      --ui-ring:rgba(245,158,11,0.55);
+
+      /* global font stack (no serif anywhere) */
+      --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+                   "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+    }
 
   /* base */
   *{ box-sizing:border-box }

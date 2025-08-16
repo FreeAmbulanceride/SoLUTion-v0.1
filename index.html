@@ -9,7 +9,7 @@
     <title>60/30/10 Color Monitor • Overlay • Golden Ratio Accuracy Generator</title>
     <link rel="stylesheet" href="styles.css" />
     <!-- No web fonts: stick to fast, crisp system UI fonts -->
-    <script src="app.js" defer></script>
+    <script src="./app.js" defer></script>
   </head>
   <body class="lock">
     <!-- Landing -->
@@ -148,5 +148,23 @@
         </div>
       </div>
     </div>
+    <script>
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('openStudio');
+  const landing = document.getElementById('landing');
+  const studio = document.getElementById('studio');
+
+  if (!btn) { console.warn('#openStudio not found'); return; }
+  btn.addEventListener('click', () => {
+    studio.hidden = false;
+    landing.classList.add('is-hiding');
+    landing.addEventListener('transitionend', () => {
+      landing.hidden = true;
+      document.body.classList.remove('lock');
+    }, { once:true });
+  });
+});
+</script>
+
   </body>
 </html>

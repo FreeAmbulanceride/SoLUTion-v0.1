@@ -16,19 +16,8 @@
     --ui-surface:rgba(255,255,255,0.05);
     --ui-ring:rgba(245,158,11,0.55);
   }
-/* Target ticks on the bars (60 / 30 / 10) */
-.bar .target{
-  position:absolute;
-  top:3px; bottom:3px;       /* short vertical line */
-  width:3px;
-  background:var(--ui-accent);
-  border-radius:2px;
-  box-shadow:0 0 0 1px rgba(0,0,0,.35), 0 0 6px rgba(0,0,0,.25);
-  transform:translateX(-50%); /* center on its x position */
-  pointer-events:none;
-}
 
-  /* optional themes */
+  /* optional alt themes (kept for future use) */
   body.theme-magenta-cosmos{
     --ui-primary:#0B0511; --ui-secondary:#1A0B2E; --ui-accent:#FF2E88;
     --ui-text:#FAF7FC; --ui-text-muted:#D8CFE0; --ui-border:rgba(255,255,255,0.10);
@@ -136,6 +125,18 @@
   .tag.fail{ background:#e55; color:#200 }
   #err{ color:#ff8c8c; font-weight:600 }
 
+  /* target ticks (60/30/10) on bars */
+  .bar .target{
+    position:absolute;
+    top:3px; bottom:3px;
+    width:3px;
+    background:var(--ui-accent);
+    border-radius:2px;
+    box-shadow:0 0 0 1px rgba(0,0,0,.35), 0 0 6px rgba(0,0,0,.25);
+    transform:translateX(-50%);
+    pointer-events:none;
+  }
+
   /* paywall */
   #paywall{
     position:fixed; inset:0; display:grid; place-items:center; z-index:9999;
@@ -157,19 +158,19 @@
   /* --- Mobile layout fixes --- */
   @media (max-width: 900px){
     header.toolbar{
-      position: static;
-      overflow-x: auto;
+      position: static;                 /* let it scroll away */
+      overflow-x: auto;                 /* horizontal scroll for chips */
       -webkit-overflow-scrolling: touch;
-      flex-wrap: nowrap;
+      flex-wrap: nowrap;                /* one row */
       gap: 10px;
     }
-    header.toolbar .group{ flex:0 0 auto }
+    header.toolbar .group{ flex:0 0 auto }   /* keep chip width */
     #stage{ width:100vw; margin:0; border-radius:0; outline:none }
     video, canvas.overlay{ border-radius:0 }
     .overlayHUD{ left:8px; right:8px; bottom:8px }
   }
   @media (max-width: 900px) and (orientation: landscape){
-    #stage{ min-height: calc(100dvh - 8px) }
+    #stage{ min-height: calc(100dvh - 8px) } /* use full phone height */
   }
 </style>
 
@@ -178,11 +179,10 @@
   <!-- Landing -->
   <section id="landing" class="hero">
     <div class="card">
-      <h1>Live 60/30/10 + Golden HUD Studio</h1>
-      <p>Real-time color clustering, ghost overlay for continuity, and Golden Ratio guidance. Built for set-life: fast, visual, brutally honest.</p>
+      <h1>On-Set Color & Composition Studio</h1>
+      <p>Live 60/30/10 color balance. Reference ghost/wipe. Golden-ratio grid & focal dot. Built for cinematographers, photographers, designers—right in the browser.</p>
       <div class="actions">
-        <button id="openStudio" class="btn">Open Studio</button>
-    
+        <button id="openStudio" class="btn">Open studio</button>
       </div>
       <p class="small" style="opacity:.8">Camera requires HTTPS or <code>http://localhost</code>. Mobile supported.</p>
     </div>
@@ -281,8 +281,7 @@
 /* ========= tiny helpers ========= */
 const $ = sel => document.querySelector(sel);
 
-/* ========= theme ========= */
-const themeSel = $('#themeSel');
+/* ========= theme (kept, default to teal–mango) ========= */
 function updRange(el){
   const min = +el.min || 0, max = +el.max || 100, val = +el.value || 0;
   const pct = ((val - min) / (max - min)) * 100;
@@ -295,15 +294,13 @@ function applyTheme(name){
   localStorage.setItem('uiTheme6010', name);
   document.querySelectorAll('input[type="range"]').forEach(updRange);
 }
-themeSel?.addEventListener('change', e=>applyTheme(e.target.value));
 applyTheme(localStorage.getItem('uiTheme6010') || 'teal-mango');
-if (themeSel) themeSel.value = localStorage.getItem('uiTheme6010') || 'teal-mango';
 document.querySelectorAll('input[type="range"]').forEach(el=>{ updRange(el); el.addEventListener('input', ()=>updRange(el)); });
 
 /* ========= soft paywall (3-day trial) ========= */
 const TRIAL_DAYS = 3;
 const TRIAL_KEY = 'trialStartedAt_v1';
-const PRO_KEY   = 'proEntitlement_v1'; // set a token here after real checkout
+const PRO_KEY   = 'proEntitlement_v1'; // set after real checkout
 
 function getMsLeft(){
   const started = +localStorage.getItem(TRIAL_KEY);
@@ -344,33 +341,32 @@ $('#btn-restore')?.addEventListener('click', ()=>{
   const key = prompt('Paste your license / token:'); if (key){ localStorage.setItem(PRO_KEY, key); hidePaywall(); }
 });
 
-/* ========= landing → studio (fade out landing, gate on trial) ========= */
+/* ========= landing → studio (fade & hide, gate on trial) ========= */
 $('#openStudio').addEventListener('click', async ()=>{
-  if (!(await ensureEntitled())) return; // gate
-
+  if (!(await ensureEntitled())) return;
   const landing = $('#landing');
   const studio  = $('#studio');
-
   studio.hidden = false;
   try { await init(); } catch(_) {}
-
   landing.classList.add('is-hiding');
   landing.addEventListener('transitionend', ()=> landing.hidden = true, { once:true });
   try { studio.scrollIntoView({ behavior:'smooth', block:'start' }); } catch(_) {}
 });
 
 /* ========= camera & devices ========= */
+const TARGET=[60,30,10], K=3, DOWNSCALE_W=160, EMA=0.35;
 const v = $('#v'), cv = $('#c'), bars = $('#bars');
 const legend = $('#legend'), actualEl = $('#actual'), scoreEl = $('#score');
 const devSel = $('#device'), inclNeutrals = $('#inclNeutrals'), errEl = $('#err');
-const TARGET=[60,30,10],K=3,DOWNSCALE_W=160,EMA=0.35; $('#kval').textContent=K;
+$('#kval').textContent=K;
 let emaPct=null;
+
 function uiError(msg){ errEl.textContent = msg||''; if(msg) console.warn(msg); }
 async function listDevices(){
   const devs=await navigator.mediaDevices.enumerateDevices();
   const vids=devs.filter(d=>d.kind==='videoinput');
   devSel.innerHTML = vids.map(d=>`<option value="${d.deviceId}">${d.label||'Camera'}</option>`).join('');
-  if(!vids.length) uiError('No cameras found. Start DroidCam/OBS or plug capture in.');
+  if(!vids.length) uiError('No cameras found. Start DroidCam/OBS or plug in capture.');
 }
 async function start(deviceId){
   try{
@@ -393,10 +389,27 @@ inclNeutrals.addEventListener('change',()=>{emaPct=null;});
 navigator.mediaDevices?.addEventListener?.('devicechange', listDevices);
 
 /* ========= utilities ========= */
+function rgb2hsv(r,g,b){
+  r/=255; g/=255; b/=255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b);
+  let h=0, s, v=max;
+  const d=max-min;
+  s = max===0 ? 0 : d/max;
+  if (max!==min){
+    switch (max){
+      case r: h=(g-b)/d + (g<b ? 6 : 0); break;
+      case g: h=(b-r)/d + 2;            break;
+      case b: h=(r-g)/d + 4;            break;
+    }
+    h/=6;
+  }
+  return [h,s,v];
+}
+
 function kmeans(pixels, k=3, maxIter=8){
   const n = pixels.length / 3;
 
-  // Farthest-first seeding (k-means++)
+  /* farthest-first seeding */
   const centers = new Array(k).fill(0).map(()=>[0,0,0]);
   const first = Math.floor(Math.random()*n);
   centers[0] = [pixels[first*3], pixels[first*3+1], pixels[first*3+2]];
@@ -417,7 +430,7 @@ function kmeans(pixels, k=3, maxIter=8){
 
   const assign = new Int16Array(n);
   for (let it=0; it<maxIter; it++){
-    // Assign
+    // assign
     for (let i=0; i<n; i++){
       const r=pixels[i*3], g=pixels[i*3+1], b=pixels[i*3+2];
       let best=-1, bd=Infinity;
@@ -428,7 +441,7 @@ function kmeans(pixels, k=3, maxIter=8){
       }
       assign[i] = best;
     }
-    // Update
+    // update
     const sum = centers.map(()=>[0,0,0,0]);
     for (let i=0; i<n; i++){
       const a=assign[i], off=i*3;
@@ -481,13 +494,13 @@ overlayMode.addEventListener('change', ()=>{ wipeWrap.style.display = overlayMod
 function drawGrid(ctx,W,H){
   ctx.save();
   ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=1;
-  ctx.beginPath(); // thirds
+  ctx.beginPath(); /* thirds */
   ctx.moveTo(W/3,0); ctx.lineTo(W/3,H);
   ctx.moveTo(2*W/3,0); ctx.lineTo(2*W/3,H);
   ctx.moveTo(0,H/3); ctx.lineTo(W,H/3);
   ctx.moveTo(0,2*H/3); ctx.lineTo(W,2*H/3);
   ctx.stroke();
-  ctx.strokeStyle='rgba(255,255,255,0.25)'; // center
+  ctx.strokeStyle='rgba(255,255,255,0.25)'; /* center */
   ctx.beginPath(); ctx.moveTo(W/2,0); ctx.lineTo(W/2,H); ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke();
   ctx.restore();
 }
@@ -534,8 +547,8 @@ function getFrameRect(){
   const W=gcv.width,H=gcv.height, vAR=(v.videoWidth||0)/(v.videoHeight||1);
   if(!isFinite(vAR)||vAR<=0) return {x:0,y:0,w:W,h:H};
   const boxAR=W/H;
-  if(boxAR>vAR){ const w=H*vAR,x=(W-w)/2; return {x,y:0,w,h:H}; }
-  else{ const h=W/vAR,y=(H-h)/2; return {x:0,y,w:W,h}; }
+  if(boxAR>vAR){ const w=H*vAR, x=(W-w)/2; return {x, y:0, w, h:H}; }
+  else{ const h=W/vAR, y=(H-h)/2; return {x:0, y, w:W, h}; }
 }
 function drawPhiGrid(ctx,rect){
   const {x,y,w,h}=rect, phi=1.61803398875;
@@ -566,7 +579,7 @@ function drawPhiSpiral(ctx,rect,corner='auto',fit='inscribe'){
   }
   ctx.restore();
 }
-function saliencyAndPhiScoreFromImageData(imgData,w,h){
+function saliencyFromImageData(imgData,w,h){
   const d=imgData.data, Y=new Float32Array(w*h), S=new Float32Array(w*h);
   const beta=(+($('#satW')?.value)||0)/100, gamma=(+($('#satG')?.value)||100)/100;
   for(let i=0,p=0;i<d.length;i+=4,p++){
@@ -575,9 +588,9 @@ function saliencyAndPhiScoreFromImageData(imgData,w,h){
     Y[p]=y; const satCurve=Math.pow(sat,gamma); S[p]=(1-beta)+beta*satCurve;
   }
   const blur=new Float32Array(w*h);
-  for(let y=1;y<h-1;y++){ for(let x=1;x<w-1;x++){ let acc=0; for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++) acc+=Y[(y+dy)*w+(x+dx)]; blur[y*w+x]=acc/9; } }
+  for(let y=1;y<h-1;y++) for(let x=1;x<w-1;x++){ let acc=0; for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++) acc+=Y[(y+dy)*w+(x+dx)]; blur[y*w+x]=acc/9; }
   const G=new Float32Array(w*h);
-  for(let y=1;y<h-1;y++){ for(let x=1;x<w-1;x++){ const p=y*w+x; const gx=-Y[p-w-1]-2*Y[p-1]-Y[p+w-1]+Y[p-w+1]+2*Y[p+1]+Y[p+w+1]; const gy=-Y[p-w-1]-2*Y[p-w]-Y[p-w+1]+Y[p+w-1]+2*Y[p+w]+Y[p+w+1]; G[p]=Math.hypot(gx,gy); } }
+  for(let y=1;y<h-1;y++) for(let x=1;x<w-1;x++){ const p=y*w+x; const gx=-Y[p-w-1]-2*Y[p-1]-Y[p+w-1]+Y[p-w+1]+2*Y[p+1]+Y[p+w+1]; const gy=-Y[p-w-1]-2*Y[p-w]-Y[p-w+1]+Y[p+w-1]+2*Y[p+w]+Y[p+w+1]; G[p]=Math.hypot(gx,gy); }
   let maxG=1e-6,maxC=1e-6; for(let i=0;i<w*h;i++){ const lc=Math.abs(Y[i]-blur[i]); if(G[i]>maxG)maxG=G[i]; if(lc>maxC)maxC=lc; }
   for(let i=0;i<w*h;i++){ const lc=Math.abs(Y[i]-blur[i])/maxC, eg=G[i]/maxG; S[i]=S[i]*(0.5+0.5*lc)*(0.5+0.5*eg); }
   const q=+($('#phiQ').value)||5, flat=Array.from(S).sort((a,b)=>b-a), thresh=flat[Math.max(0,Math.floor((q/100)*flat.length)-1)]||0;
@@ -610,7 +623,7 @@ function loop(){
   const imgData = ctx.getImageData(0,0,w,h);
   const data = imgData.data;
 
-  // color clusters
+  /* color clusters */
   let r=0,g=0,b=0,cnt=0; for(let i=0;i<data.length;i+=32){ r+=data[i]; g+=data[i+1]; b+=data[i+2]; cnt++; }
   const mean=[r/cnt,g/cnt,b/cnt]; if (sceneCut(mean)) emaPct=null;
 
@@ -644,16 +657,18 @@ function loop(){
     const hex = '#'+s.rgb.map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
     label.textContent = `${pct.toFixed(1)}%  ${hex}`;
 
-    // NEW: target tick at 60 / 30 / 10 for bars 0 / 1 / 2
-  const tick = document.createElement('i');
-  tick.className = 'target';
-  tick.style.left = `${TARGET[i]}%`;          // TARGET = [60,30,10]
+    /* target tick at 60 / 30 / 10 on bars 0 / 1 / 2 */
+    const tick = document.createElement('i');
+    tick.className = 'target';
+    tick.style.left = `${TARGET[i]}%`;
 
-  div.appendChild(fill);
-  div.appendChild(label);
-  div.appendChild(tick);                       // <— add the tick
-  bars.appendChild(div);
-    const swEl=document.createElement('span'); swEl.className='swatch'; swEl.style.background=`rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})`; legend.appendChild(swEl);
+    div.appendChild(fill);
+    div.appendChild(label);
+    div.appendChild(tick);
+    bars.appendChild(div);
+
+    const swEl=document.createElement('span'); swEl.className='swatch';
+    swEl.style.background=`rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})`; legend.appendChild(swEl);
   });
 
   const pcts = sorted.map(s=> s.pct * 100 / totPct);
@@ -661,27 +676,25 @@ function loop(){
   actualEl.textContent = `${actual[0]} / ${actual[1]} / ${actual[2]}`;
   scoreEl.textContent = score; scoreEl.className = `tag ${tag}`;
 
-  // golden HUD (off by default; spiral off by default)
-  if ($('#phiOn').checked){
+  /* Golden HUD (off by default; spiral off by default) */
+  if (phiOn.checked){
     const rect=getFrameRect();
-    // draw φ grid (guide lines)
     drawPhiGrid(gctx, rect);
-
-    const { cx, cy, score:phiScore, bestCorner } = saliencyAndPhiScoreFromImageData(imgData, w, h);
+    const { cx, cy, score:phiScore, bestCorner } = saliencyFromImageData(imgData, w, h);
     const sx = rect.x + (cx / w) * rect.w;
     const sy = rect.y + (cy / h) * rect.h;
     drawPhiMarker(gctx, sx, sy);
 
-    const mode = $('#phiSpiral').value;
+    const mode = phiSpiralSel.value;
     const fit  = $('#phiFit').value;
     const spiralCorner = mode==='auto' ? (bestCorner || 'tr') : mode;
     if (mode!=='off') drawPhiSpiral(gctx, rect, spiralCorner, fit);
 
-    $('#phiScore').textContent = phiScore;
-    $('#phiScore').className = 'tag ' + (phiScore>=85?'pass': phiScore<60?'fail':'warn');
+    phiScoreEl.textContent = phiScore;
+    phiScoreEl.className = 'tag ' + (phiScore>=85?'pass': phiScore<60?'fail':'warn');
   } else {
-    $('#phiScore').textContent = '--';
-    $('#phiScore').className = 'tag';
+    phiScoreEl.textContent = '--';
+    phiScoreEl.className = 'tag';
   }
 
   ('requestVideoFrameCallback' in HTMLVideoElement.prototype)
@@ -693,10 +706,11 @@ v.addEventListener('loadeddata', loop);
 /* ========= defaults (force off for grid/spiral/hud) ========= */
 window.addEventListener('DOMContentLoaded', ()=>{
   $('#grid').checked = false;
-  $('#phiOn').checked = false;          // Golden HUD master OFF by default
-  $('#phiSpiral').value = 'off';        // no spiral by default
+  $('#phiOn').checked = false;
+  $('#phiSpiral').value = 'off';
 });
 </script>
 
 </body>
 </html>
+

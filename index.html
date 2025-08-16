@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>On-Set 60/30/10 + Golden HUD</title>
 <style>
 /* ---------- 60/30/10 theme ---------- */
@@ -104,6 +104,7 @@ canvas.hidden{display:none}
 .muted{color:var(--ui-text-muted)}
 
 
+
   /* --- Mobile layout fixes --- */
 #studio{ min-height: 100dvh; } /* use dynamic viewport height on iOS */
 
@@ -125,6 +126,31 @@ canvas.hidden{display:none}
 }
 
 /* In landscape on phones, make sure the stage can use the full height */
+@media (max-width: 900px) and (orientation: landscape){
+  #stage{ min-height: calc(100dvh - 8px); }
+}
+
+  /* --- Mobile layout fixes (paste at end of <style>) --- */
+#studio{ min-height: 100dvh; } /* use dynamic viewport height on iOS */
+
+/* On phones: let controls scroll horizontally and NOT stick */
+@media (max-width: 900px){
+  header.toolbar{
+    position: static;                 /* was sticky; now scrolls away */
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;                /* single row; swipe to see more */
+    gap: 10px;
+  }
+  header.toolbar .group{ flex: 0 0 auto; } /* chips don’t shrink oddly */
+
+  /* Give the video the whole screen */
+  #stage{ width:100vw; margin:0; border-radius:0; outline:none; }
+  video, canvas.ghost{ border-radius:0; }
+  .overlay{ left:8px; right:8px; bottom:8px; }
+}
+
+/* In landscape on phones, let the stage use full height */
 @media (max-width: 900px) and (orientation: landscape){
   #stage{ min-height: calc(100dvh - 8px); }
 }

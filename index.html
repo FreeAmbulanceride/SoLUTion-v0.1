@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>On-Set 60/30/10 + Golden HUD</title>
 <style>
 /* ---------- 60/30/10 theme ---------- */
@@ -103,6 +103,32 @@ canvas.hidden{display:none}
 .tag.fail{background:#e55;color:#200}
 .muted{color:var(--ui-text-muted)}
 </style>
+/* --- Mobile layout fixes --- */
+#studio{ min-height: 100dvh; } /* use dynamic viewport height on iOS */
+
+/* On phones: let controls scroll horizontally and NOT stick */
+@media (max-width: 900px){
+  header.toolbar{
+    position: static;                 /* was sticky; now scrolls away */
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;                /* single row; scroll to see more */
+    gap: 10px;
+  }
+  header.toolbar .group{ flex: 0 0 auto; } /* chips don’t shrink weirdly */
+
+  /* Give the video the whole screen */
+  #stage{ width:100vw; margin:0; border-radius:0; outline:none; }
+  video, canvas.overlay{ border-radius:0; }
+  .overlayHUD{ left:8px; right:8px; bottom:8px; }
+}
+
+/* In landscape on phones, make sure the stage can use the full height */
+@media (max-width: 900px) and (orientation: landscape){
+  #stage{ min-height: calc(100dvh - 8px); }
+}
+
+  
 </head>
 
 <body>
@@ -200,16 +226,18 @@ canvas.hidden{display:none}
 
 <script>
 /* ---------- Landing → Studio transition with lazy camera start ---------- */
+<script>
 (function () {
-  var openStudioBtn = document.getElementById('openStudio');
-  var studio = document.getElementById('studio');
+  const openStudioBtn = document.getElementById('openStudio');
+  const studio = document.getElementById('studio');
   openStudioBtn.addEventListener('click', async () => {
-    document.body.classList.add('mode-studio');
     studio.hidden = false;
+    try { studio.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(_) {}
     try { await init(); } catch(_) {}
-    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch(_) { window.scrollTo(0,0); }
   });
 })();
+</script>
+
 
 /* ---------- Helpers for sliders (filled track) ---------- */
 function updRange(el){

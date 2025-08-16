@@ -53,6 +53,16 @@ let prevScoreInt      = null; // last displayed score int (for chime)
    Landing → Studio
 ========================= */
 document.addEventListener('DOMContentLoaded', () => {
+   // Apply previous theme if saved; otherwise auto-derive from landing image once
+if (!restoreSavedThemeIfAny()) {
+  tryAutoDeriveFromHero();
+}
+
+// Manual re-derive button
+document.getElementById('matchTheme')?.addEventListener('click', () => {
+  tryAutoDeriveFromHero();
+});
+
   // Lock scroll on landing
   document.body.classList.add('lock');
 
@@ -477,6 +487,160 @@ function rgb2hsv(r,g,b){
 function kmeans(pixels, k=3, maxIter=8){
   const n = pixels.length / 3;
 
+/* =========================
+   Theme derivation from landing image
+========================= */
+const THEME_KEY = 'derivedTheme_v1';
+
+function rgbToHex(rgb){
+  const [r,g,b] = rgb.map(v => Math.max(0, Math.min(255, Math.round(v))));
+  return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+function luminance([r,g,b]){
+  // Perceived luminance 0..255
+  return 0.2126*r + 0.7152*g + 0.0722*b;
+}
+
+function themeFromClusters(clusters){
+  // clusters: [{rgb:[r,g,b], pct:number}]
+  // Compute HSV & luminance for decisions
+  const enriched = clusters.map(c => {
+    const [h,s,v] = rgb2hsv(c.rgb[0], c.rgb[1], c.rgb[2]);
+    return { ...c, h, s, v, Y: luminance(c.rgb) };
+  });
+
+  // Primary: darkest of the dominant clusters (keeps backgrounds rich)
+  const primary = [...enriched].sort((a,b)=> (a.Y - b.Y) || (b.pct - a.pct))[0];
+
+  // Secondary: most dominant that isn't primary, prefer medium luminance
+  const secondary = [...enriched]
+    .filter(c => c !== primary)
+    .sort((a,b)=> (Math.abs(a.Y - primary.Y*1.25) - Math.abs(b.Y - primary.Y*1.25)) || (b.pct - a.pct))[0] || enriched[1] || primary;
+
+  // Accent: highest saturation, not super-dark
+  const accentCand = [...enriched]
+    .filter(c => c !== primary && c !== secondary)
+    .sort((a,b)=> (b.s - a.s) || (b.pct - a.pct))[0] || secondary;
+
+  const primaryHex   = rgbToHex(primary.rgb);
+  const secondaryHex = rgbToHex(secondary.rgb);
+  const accentHex    = rgbToHex(accentCand.rgb);
+
+  // Text colors based on primary brightness
+  const primaryY = primary.Y; // 0..255
+  const textLight = '#EDEFF2';
+  const textDark  = '#0B0D10';
+  const isDarkBG  = primaryY < 140;
+
+  const vars = {
+    '--ui-primary':   primaryHex,
+    '--ui-secondary': secondaryHex,
+    '--ui-accent':    accentHex,
+    '--ui-text':      isDarkBG ? textLight : textDark,
+    '--ui-text-muted': isDarkBG ? '#B8C2D6' : '#334155',
+    '--ui-border':    isDarkBG ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.12)',
+    '--ui-surface':   isDarkBG ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+    '--ui-ring':      isDarkBG ? 'color-mix(in oklab, var(--ui-accent) 55%, transparent)' 
+                               : 'color-mix(in oklab, var(--ui-accent) 40%, transparent)'
+  };
+  return vars;
+}
+
+function applyThemeVars(vars){
+  const root = document.documentElement;
+  Object.entries(vars).forEach(([k,v]) => root.style.setProperty(k, v));
+  // Persist
+  try { localStorage.setItem(THEME_KEY, JSON.stringify(vars)); } catch(_) {}
+}
+
+async function deriveThemeFromImageUrl(url){
+  // Load image
+  const img = new Image();
+  // If the image is same-origin, crossOrigin isn't needed; leaving this harmlessly set helps on GitHub Pages too.
+  img.crossOrigin = 'anonymous';
+  const loadP = new Promise((res, rej)=>{
+    img.onload = ()=>res();
+    img.onerror = ()=>rej(new Error('Failed to load image for theme derivation'));
+  });
+  img.src = url;
+  await loadP;
+
+  // Draw to a small canvas and sample
+  const maxW = 240;
+  const scale = img.naturalWidth ? Math.min(1, maxW / img.naturalWidth) : 1;
+  const w = Math.max(16, Math.round((img.naturalWidth||maxW) * scale));
+  const h = Math.max(16, Math.round((img.naturalHeight||maxW) * scale));
+  const oc = document.createElement('canvas');
+  oc.width = w; oc.height = h;
+  const octx = oc.getContext('2d', { willReadFrequently: true });
+  octx.drawImage(img, 0, 0, w, h);
+
+  let data;
+  try {
+    data = octx.getImageData(0,0,w,h).data;
+  } catch(err){
+    console.warn('Canvas tainted (CORS). Ensure the hero image is served from the same origin.');
+    return;
+  }
+
+  // Build pixel buffer; prefer a stride to keep it fast
+  const stride = 4 * 4; // every 4th pixel
+  const buf = [];
+  for (let i=0; i<data.length; i += stride){
+    const r = data[i], g = data[i+1], b = data[i+2];
+    // Ignore very near-neutrals for better accent selection
+    const [,s] = rgb2hsv(r,g,b);
+    if (s < 0.04) continue;
+    buf.push(r,g,b);
+  }
+  if (buf.length < 300) {
+    // If too few pixels after saturation filtering, just use everything
+    for (let i=0; i<data.length; i += 4*4){
+      buf.push(data[i], data[i+1], data[i+2]);
+    }
+  }
+
+  const pixels = new Float32Array(buf);
+  // 4 clusters to get a nicer pick distribution
+  const { centers, counts } = kmeans(pixels, 4, 8);
+  const total = counts.reduce((a,b)=>a+b,0) || 1;
+  const clusters = counts.map((c,i) => ({
+    rgb: [
+      Math.max(0, Math.min(255, Math.round(centers[i][0]))),
+      Math.max(0, Math.min(255, Math.round(centers[i][1]))),
+      Math.max(0, Math.min(255, Math.round(centers[i][2])))
+    ],
+    pct: c / total
+  })).sort((a,b)=>b.pct - a.pct);
+
+  applyThemeVars(themeFromClusters(clusters));
+}
+
+function tryAutoDeriveFromHero(){
+  // Read the resolved background-image of the landing card .bg
+  const bgEl = document.querySelector('#landing .bg');
+  if (!bgEl) return;
+  const bg = getComputedStyle(bgEl).backgroundImage;
+  const m = bg && bg.match(/url\(["']?(.+?)["']?\)/);
+  if (m && m[1]) {
+    deriveThemeFromImageUrl(m[1]).catch(err=>console.warn('Theme derive failed:', err));
+  }
+}
+
+function restoreSavedThemeIfAny(){
+  try{
+    const raw = localStorage.getItem(THEME_KEY);
+    if (!raw) return false;
+    const vars = JSON.parse(raw);
+    if (vars && typeof vars === 'object') {
+      applyThemeVars(vars);
+      return true;
+    }
+  }catch(_){}
+  return false;
+}
+
+   
   // farthest-first seeding
   const centers = new Array(k).fill(0).map(()=>[0,0,0]);
   const first = Math.floor(Math.random()*n);

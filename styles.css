@@ -1,0 +1,161 @@
+:root{
+  /* 60/30/10 palette */
+  --ui-primary:#0B1220;   /* 60% */
+  --ui-secondary:#172036; /* 30% */
+  --ui-accent:#F59E0B;    /* 10% */
+  --ui-text:#EDEFF2;
+  --ui-text-muted:#B8C2D6;
+  --ui-border:rgba(255,255,255,0.08);
+  --ui-surface:rgba(255,255,255,0.05);
+  --ui-ring:rgba(245,158,11,0.55);
+}
+
+/* Base reset + font (no Times New Roman anywhere) */
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body{
+  margin:0;
+  font-size:14px;
+  line-height:1.35;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  background:var(--ui-primary);
+  color:var(--ui-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+[hidden]{ display:none !important; }
+body.lock{ overflow:hidden }
+
+/* Buttons/links */
+.btn{
+  appearance:none; border:none; border-radius:10px; padding:10px 14px; font-weight:700;
+  background:var(--ui-accent); color:#0A0B0D; box-shadow:0 2px 10px rgba(0,0,0,.25);
+  transition:transform .08s ease, filter .12s ease;
+  cursor:pointer;
+}
+.btn:hover{ filter:brightness(1.05) }
+.btn:active{ transform:translateY(1px) }
+.link{ background:none; border:none; color:var(--ui-accent); font-weight:700; cursor:pointer }
+
+/* Landing */
+.hero{
+  min-height: 100dvh;
+  display:grid; place-items:center;
+  padding:24px;
+  background:
+    radial-gradient(60% 60% at 70% 10%, color-mix(in oklab, var(--ui-accent) 14%, transparent), transparent 60%),
+    var(--ui-primary);
+  transition: opacity .25s ease, transform .25s ease;
+}
+#landing.is-hiding{ opacity:0; transform: translateY(-8px); }
+
+.hero .card{
+  position:relative;
+  overflow:hidden;
+  padding:0;
+  width:min(900px, 96vw);
+  min-height:360px;
+  border-radius:16px;
+  background:var(--ui-secondary);
+  border:1px solid var(--ui-border);
+  box-shadow:0 24px 80px rgba(0,0,0,.45);
+}
+.card .bg{
+  position:absolute; inset:0;
+  background:var(--hero, url('SoLUTion-v0.1/soLUTion1a.png')) center/cover no-repeat;
+  filter:saturate(110%) contrast(1.05) brightness(.85);
+  transform:scale(1.02);
+}
+.card .scrim{
+  position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.55));
+}
+.card .content{
+  position:relative; z-index:1;
+  padding:28px;
+  display:grid; gap:12px;
+}
+.hero h1{ margin:0 0 6px 0; font-size:28px }
+.hero p { margin:8px 0 18px 0; color:var(--ui-text-muted) }
+.hero .actions{ display:flex; gap:12px; flex-wrap:wrap }
+
+/* Studio */
+#studio{ min-height:100dvh; padding:10px 10px 24px; }
+header.toolbar{
+  position: sticky; top:0; z-index:10;
+  display:flex; flex-wrap:wrap; gap:12px; align-items:center;
+  padding:10px 12px; background:var(--ui-secondary);
+  border-bottom:1px solid var(--ui-border); box-shadow:0 2px 18px rgba(0,0,0,.25);
+}
+.group{
+  display:flex; gap:10px; align-items:center; padding:8px 10px;
+  background:var(--ui-surface); border:1px solid var(--ui-border);
+  border-radius:10px; backdrop-filter:saturate(120%) blur(2px)
+}
+.group label{ white-space:nowrap }
+select{
+  background:transparent; color:var(--ui-text); border:1px solid var(--ui-border);
+  border-radius:8px; padding:6px 8px; outline:none;
+}
+input[type="file"]{ color:var(--ui-text-muted) }
+input[type="checkbox"]{ accent-color:var(--ui-accent) }
+input[type="range"]{
+  -webkit-appearance:none; appearance:none; height:22px; background:transparent; width:140px;
+}
+input[type="range"]::-webkit-slider-runnable-track{
+  height:6px;
+  background:linear-gradient(var(--ui-accent) 0 0) left/var(--pct,0%) 100% no-repeat, rgba(255,255,255,0.14);
+  border-radius:999px;
+}
+input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+  background:var(--ui-accent); border:2px solid #0A0B0D; margin-top:-5px; box-shadow:0 0 0 4px var(--ui-ring);
+}
+input[type="range"]::-moz-range-track{ height:6px; background:rgba(255,255,255,0.14); border-radius:999px }
+input[type="range"]::-moz-range-progress{ height:6px; background:var(--ui-accent); border-radius:999px }
+input[type="range"]::-moz-range-thumb{
+  width:16px; height:16px; border-radius:50%; background:var(--ui-accent);
+  border:2px solid #0A0B0D; box-shadow:0 0 0 4px var(--ui-ring);
+}
+
+#stage{ position:relative; width:min(100vw,1080px); margin:14px auto;
+        outline:1px solid color-mix(in oklab, var(--ui-accent) 35%, transparent); outline-offset:8px; border-radius:18px }
+video{ width:100%; height:auto; display:block; background:#000; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.45) }
+canvas.overlay{ position:absolute; inset:0; pointer-events:none; border-radius:14px }
+canvas.hidden{ display:none }
+
+.overlayHUD{ position:absolute; left:12px; right:12px; bottom:12px; display:flex; flex-direction:column; gap:8px; pointer-events:none }
+.bars{ display:grid; gap:6px; background:rgba(0,0,0,.35); padding:10px; border-radius:10px; border:1px solid var(--ui-border) }
+.bar{ position:relative; height:22px; background:#222; border-radius:6px; overflow:hidden }
+.fill{ height:100% }
+.bar span{ position:absolute; left:8px; top:2px; font-weight:600; text-shadow:0 1px 2px rgba(0,0,0,.6) }
+.bar .target{
+  position:absolute; top:3px; bottom:3px; width:3px;
+  background:var(--ui-accent); border-radius:2px;
+  box-shadow:0 0 0 1px rgba(0,0,0,.35), 0 0 6px rgba(0,0,0,.25);
+  transform:translateX(-50%); pointer-events:none;
+}
+.readout{ display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:space-between;
+          background:rgba(0,0,0,.35); padding:10px; border-radius:10px; border:1px solid var(--ui-border) }
+.swatch{ display:inline-block; width:14px; height:14px; border-radius:3px; border:1px solid rgba(255,255,255,.35); margin-right:6px; vertical-align:-2px }
+.tag{ padding:2px 8px; border-radius:6px; font-weight:700; color:#041 }
+.tag.pass{ background:#1c6 } .tag.warn{ background:#fb3; color:#201 } .tag.fail{ background:#e55; color:#200 }
+#err{ color:#ff8c8c; font-weight:600 }
+
+/* Mobile tweaks */
+@media (max-width: 900px){
+  header.toolbar{
+    position: static;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+  header.toolbar .group{ flex:0 0 auto }
+  #stage{ width:100vw; margin:0; border-radius:0; outline:none }
+  video, canvas.overlay{ border-radius:0 }
+  .overlayHUD{ left:8px; right:8px; bottom:8px }
+}
+@media (max-width: 900px) and (orientation: landscape){
+  #stage{ min-height: calc(100dvh - 8px) }
+}

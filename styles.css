@@ -38,6 +38,8 @@ body.lock{ overflow:hidden }
 .link{ background:none; border:none; color:var(--ui-accent); font-weight:700; cursor:pointer }
 
 /* Landing */
+.hero .card .bg,
+.hero .card .scrim { pointer-events: none; }
 .hero{
   min-height: 100dvh;
   display:grid; place-items:center;

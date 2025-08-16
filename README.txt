@@ -1,0 +1,1 @@
+Deploy by dragging this folder to Netlify Drop or GitHub Pages. Replace index.html with your full HTML if you want the full UI.

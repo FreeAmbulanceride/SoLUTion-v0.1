@@ -1,0 +1,927 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>60/30/10 Monitor • Ghost Overlay • Golden HUD</title>
+<style>
+canvas.hidden{ display:none; }
+
+  /* 60/30/10 theming via CSS variables */
+  :root{
+    --ui-primary:#0B1220;          /* 60% */
+    --ui-secondary:#172036;        /* 30% */
+    --ui-accent:#F59E0B;           /* 10% */
+    --ui-text:#EDEFF2;
+    --ui-text-muted:#B8C2D6;
+    --ui-border:rgba(255,255,255,0.08);
+    --ui-surface:rgba(255,255,255,0.04);
+    --ui-ring:rgba(245,158,11,0.55);
+  }
+  /* Alt palettes (switch by adding body.className) */
+  body.theme-magenta-cosmos{
+    --ui-primary:#0B0511;
+    --ui-secondary:#1A0B2E;
+    --ui-accent:#FF2E88;
+    --ui-text:#FAF7FC; --ui-text-muted:#D8CFE0;
+    --ui-border:rgba(255,255,255,0.10);
+    --ui-surface:rgba(255,255,255,0.05);
+    --ui-ring:rgba(255,46,136,0.55);
+  }
+  body.theme-cyan-sunrise{
+    --ui-primary:#051A1D;
+    --ui-secondary:#0C2B31;
+    --ui-accent:#12D6DF;
+    --ui-text:#EAF7F8; --ui-text-muted:#BEE6E9;
+    --ui-border:rgba(255,255,255,0.08);
+    --ui-surface:rgba(255,255,255,0.05);
+    --ui-ring:rgba(18,214,223,0.55);
+  }
+
+  /* Base layout (unchanged structure, new colors) */
+  body{margin:0;font:14px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+       background:var(--ui-primary); color:var(--ui-text);}
+  header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;
+         padding:10px 12px;background:var(--ui-secondary);position:sticky;top:0;z-index:10;
+         border-bottom:1px solid var(--ui-border); box-shadow:0 2px 18px rgba(0,0,0,.25);}
+  header>*{white-space:nowrap}
+  #err{color:#ff8c8c;font-weight:600}
+
+  #stage{position:relative;width:min(100vw,1080px);margin:14px auto}
+  video{width:100%;height:auto;display:block;background:#000;border-radius:14px;
+        box-shadow:0 10px 30px rgba(0,0,0,.45)}
+  canvas.ghost{position:absolute;inset:0;pointer-events:none;border-radius:14px}
+
+  .group{display:flex;gap:10px;align-items:center;padding:8px 10px;
+         background:var(--ui-surface);border:1px solid var(--ui-border);
+         border-radius:10px; backdrop-filter:saturate(120%) blur(2px)}
+  .group label{opacity:.95}
+
+  .overlay{position:absolute;left:12px;right:12px;bottom:12px;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+  .bars{display:grid;gap:6px;background:rgba(0,0,0,.35);padding:10px;border-radius:10px;border:1px solid var(--ui-border)}
+  .bar{position:relative;height:22px;background:#222;border-radius:6px;overflow:hidden}
+  .fill{height:100%}
+  .bar span{position:absolute;left:8px;top:2px;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+  .readout{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;
+           background:rgba(0,0,0,.35);padding:10px;border-radius:10px;border:1px solid var(--ui-border)}
+
+  /* Accent elements: keep these to ~10% of visible UI */
+  button, .btn{
+    appearance:none; border:none; border-radius:10px; padding:8px 12px; font-weight:700;
+    background:var(--ui-accent); color:#0A0B0D; box-shadow:0 2px 10px rgba(0,0,0,.25);
+    transition:transform .08s ease, filter .12s ease, box-shadow .12s ease;
+  }
+  button:hover{filter:brightness(1.05)}
+  button:active{transform:translateY(1px)}
+  select{
+    background:transparent; color:var(--ui-text); border:1px solid var(--ui-border);
+    border-radius:8px; padding:6px 8px; outline:none;
+  }
+  input[type="file"]{color:var(--ui-text-muted)}
+  input[type="checkbox"]{accent-color:var(--ui-accent)}
+  input[type="range"]{
+    -webkit-appearance:none; appearance:none; height:22px; background:transparent; width:140px;
+  }
+  input[type="range"]::-webkit-slider-runnable-track{
+    height:6px;
+    background:
+      linear-gradient(var(--ui-accent) 0 0) left/var(--pct,0%) 100% no-repeat,
+      rgba(255,255,255,0.14);
+    border-radius:999px;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+    background:var(--ui-accent); border:2px solid #0A0B0D; margin-top:-5px; box-shadow:0 0 0 4px var(--ui-ring);
+  }
+  input[type="range"]::-moz-range-track{
+    height:6px; background:rgba(255,255,255,0.14); border-radius:999px;
+  }
+  input[type="range"]::-moz-range-progress{
+    height:6px; background:var(--ui-accent); border-radius:999px;
+  }
+  input[type="range"]::-moz-range-thumb{
+    width:16px;height:16px;border-radius:50%;background:var(--ui-accent); border:2px solid #0A0B0D; box-shadow:0 0 0 4px var(--ui-ring);
+  }
+
+  /* Tags keep semantic colors; accent is reserved for CTAs */
+  .tag{padding:2px 8px;border-radius:6px;font-weight:700;color:#041;}
+  .tag.pass{background:#1c6}
+  .tag.warn{background:#fb3;color:#201}
+  .tag.fail{background:#e55;color:#200}
+
+  .swatch{display:inline-block;width:14px;height:14px;border-radius:3px;border:1px solid rgba(255,255,255,.35);margin-right:6px;vertical-align:-2px}
+  .muted{color:var(--ui-text-muted)}
+  /* Subtle accent outline around the stage (counts toward the 10%) */
+  #stage{outline:1px solid color-mix(in oklab, var(--ui-accent) 35%, transparent); outline-offset:8px; border-radius:18px}
+</style>
+
+<header>
+  <div class="group">
+    <label>Theme
+      <select id="themeSel">
+        <option value="teal-mango" selected>Teal–Mango (φ default)</option>
+        <option value="magenta-cosmos">Magenta–Cosmos</option>
+        <option value="cyan-sunrise">Cyan–Sunrise</option>
+      </select>
+    </label>
+  </div>
+
+  <button id="startBtn">Start camera</button>
+  <label>Camera <select id="device"></select></label>
+  <span id="err"></span>
+
+  <div class="group">
+    <label><input type="checkbox" id="inclNeutrals" checked> include neutrals</label>
+    <label class="muted">K=<span id="kval">3</span></label>
+  </div>
+
+  <!-- Reference / overlay controls -->
+  <div class="group">
+    <label>Ref still <input id="refUpload" type="file" accept="image/*"></label>
+    <button id="grabRef">Capture current</button>
+    <label>mode
+      <select id="overlayMode">
+        <option value="overlay">Ghost</option>
+        <option value="wipe">Split/Wipe</option>
+      </select>
+    </label>
+    <label>opacity <input id="alpha" type="range" min="0" max="100" value="45"></label>
+  </div>
+  <div class="group">
+    <label>scale <input id="scale" type="range" min="50" max="150" value="100"></label>
+    <label>x <input id="offx" type="range" min="-200" max="200" value="0"></label>
+    <label>y <input id="offy" type="range" min="-200" max="200" value="0"></label>
+    <label class="subtle"><input id="flip" type="checkbox"> flip</label>
+    <label class="subtle"><input id="grid" type="checkbox" checked> grid</label>
+    <label class="subtle" id="wipeWrap" style="display:none">wipe <input id="wipe" type="range" min="0" max="100" value="50"></label>
+  </div>
+
+  <!-- Golden ratio HUD -->
+  <div class="group">
+    <label><input id="phiOn" type="checkbox" checked> Golden HUD</label>
+    <label>spiral
+      <select id="phiSpiral">
+        <option value="off">off — no spiral</option>
+        <option value="auto" selected>Auto Detect — chooses corner nearest focal point</option>
+        <option value="tl">TL (Top-Left)</option>
+        <option value="tr">TR (Top-Right)</option>
+        <option value="bl">BL (Bottom-Left)</option>
+        <option value="br">BR (Bottom-Right)</option>
+      </select>
+    </label>
+<label><input id="gazeOn" type="checkbox" checked> Gold “gaze” dot</label>
+<label class="muted"><input id="gazeFace" type="checkbox" checked> face bias</label>
+<label class="muted"><input id="gazeMotion" type="checkbox" checked> motion</label>
+
+    <label>fit
+      <select id="phiFit">
+        <option value="inscribe" selected>fit inside</option>
+        <option value="cover">cover frame</option>
+      </select>
+    </label>
+
+    <label>Q% <input id="phiQ" type="range" min="1" max="20" value="5"></label>
+    <label>sat wt <input id="satW" type="range" min="0" max="100" value="55"></label>
+    <label>sat curve <input id="satG" type="range" min="50" max="140" value="85"></label>
+  </div>
+</header>
+
+<div id="stage">
+  <video id="v" playsinline autoplay muted></video>
+  <canvas id="ghost" class="ghost"></canvas>
+  <canvas id="c" class="hidden"></canvas>
+
+  <div class="overlay">
+    <div class="bars" id="bars"></div>
+    <div class="readout">
+      <div id="legend"></div>
+      <div>Actual: <span id="actual"></span></div>
+      <div>Score: <span id="score" class="tag">--</span></div>
+      <div>Phi: <span id="phiScore" class="tag">--</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== Core setup ===== */
+
+// sRGB -> linear
+function srgbLin(c){ c/=255; return c<=0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4); }
+// Linear RGB -> CIE Lab (D65)
+function rgb2lab(r,g,b){
+  const R=srgbLin(r), G=srgbLin(g), B=srgbLin(b);
+  // sRGB to XYZ (D65)
+  let X = 0.4124564*R + 0.3575761*G + 0.1804375*B;
+  let Y = 0.2126729*R + 0.7151522*G + 0.0721750*B;
+  let Z = 0.0193339*R + 0.1191920*G + 0.9503041*B;
+  // normalize to white
+  const Xn=0.95047, Yn=1.00000, Zn=1.08883;
+  X/=Xn; Y/=Yn; Z/=Zn;
+  const f=t=> t>0.008856 ? Math.cbrt(t) : (7.787*t+16/116);
+  const fx=f(X), fy=f(Y), fz=f(Z);
+  const L = 116*fy - 16, a = 500*(fx - fy), b2 = 200*(fy - fz);
+  return [L,a,b2];
+}
+
+// Tiny 3x3 box blur in-place for Float32Array maps (W x H)
+function boxBlur(map, w, h, iters=1){
+  const out = new Float32Array(map.length);
+  for(let k=0;k<iters;k++){
+    out.fill(0);
+    for(let y=1;y<h-1;y++){
+      for(let x=1;x<w-1;x++){
+        let acc=0;
+        for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++) acc += map[(y+dy)*w + (x+dx)];
+        out[y*w+x] = acc/9;
+      }
+    }
+    map.set(out);
+  }
+}
+
+// Add a Gaussian bump into map at (cx,cy)
+function addGaussian(map, w,h, cx,cy, sigma, weight=1){
+  const r = Math.max(2, Math.floor(3*sigma));
+  const s2 = 2*sigma*sigma;
+  for(let yy=Math.max(0,cy-r); yy<Math.min(h,cy+r); yy++){
+    for(let xx=Math.max(0,cx-r); xx<Math.min(w,cx+r); xx++){
+      const dx=xx-cx, dy=yy-cy;
+      const g = Math.exp(-(dx*dx+dy*dy)/s2) * weight;
+      map[yy*w+xx] += g;
+    }
+  }
+}
+
+// Draw gold marker
+function drawGoldMarker(ctx, x,y){
+  ctx.save();
+  ctx.fillStyle='rgba(255,215,0,0.95)';   // gold
+  ctx.strokeStyle='rgba(0,0,0,0.6)';
+  ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+
+
+// THEME SWITCHER (60/30/10)
+const themeSel = document.getElementById('themeSel');
+
+function updRange(el){
+  const min = +el.min || 0, max = +el.max || 100, val = +el.value || 0;
+  const pct = ((val - min) / (max - min)) * 100;
+  el.style.setProperty('--pct', pct + '%');
+}
+
+function applyTheme(name){
+  document.body.classList.remove('theme-magenta-cosmos','theme-cyan-sunrise');
+  if (name==='magenta-cosmos') document.body.classList.add('theme-magenta-cosmos');
+  if (name==='cyan-sunrise')   document.body.classList.add('theme-cyan-sunrise');
+  localStorage.setItem('uiTheme6010', name);
+
+  // refresh slider fill length var (color comes from CSS)
+  document.querySelectorAll('input[type="range"]').forEach(updRange);
+}
+
+themeSel?.addEventListener('change', e=>applyTheme(e.target.value));
+applyTheme(localStorage.getItem('uiTheme6010') || 'teal-mango');
+if (themeSel) themeSel.value = localStorage.getItem('uiTheme6010') || 'teal-mango';
+
+// keep range fill in sync while sliding
+document.querySelectorAll('input[type="range"]').forEach(el=>{
+  updRange(el);
+  el.addEventListener('input', ()=>updRange(el));
+});
+
+const TARGET=[60,30,10],K=3,DOWNSCALE_W=160,EMA=0.35;
+const v=document.getElementById('v'), cv=document.getElementById('c'), bars=document.getElementById('bars');
+const legend=document.getElementById('legend'), actualEl=document.getElementById('actual'), scoreEl=document.getElementById('score');
+const devSel=document.getElementById('device'), inclNeutrals=document.getElementById('inclNeutrals'), errEl=document.getElementById('err');
+document.getElementById('kval').textContent=K;
+let emaPct=null;
+
+function uiError(msg){errEl.textContent=msg||''; if(msg) console.warn(msg);}
+async function listDevices(){
+  const devs=await navigator.mediaDevices.enumerateDevices();
+  const vids=devs.filter(d=>d.kind==='videoinput');
+  devSel.innerHTML = vids.map(d=>`<option value="${d.deviceId}">${d.label||'Camera'}</option>`).join('');
+  if(!vids.length) uiError('No cameras found. Start DroidCam/OBS or plug in capture.');
+}
+async function playStreamOnce(vid){
+  // Make sure the element is in a “safe to autoplay” state
+  vid.muted = true;
+  vid.setAttribute('playsinline', '');
+  try {
+    await vid.play();                       // modern browsers
+  } catch (e) {
+    // Safari/iOS sometimes needs metadata first
+    vid.addEventListener('loadedmetadata', () => vid.play(), { once: true });
+  }
+}
+
+async function start(deviceId){
+  try{
+    // Cleanly stop and detach any prior stream
+    if (v.srcObject) {
+      v.srcObject.getTracks().forEach(t => t.stop());
+      v.srcObject = null;
+    }
+
+    // Be explicit about resolution & fps (helps DroidCam/OBS/USB sticks)
+    const constraints = deviceId
+      ? { video: { deviceId: { exact: deviceId },
+                   width: { ideal: 1280 }, height: { ideal: 720 },
+                   frameRate: { ideal: 30, max: 60 } },
+          audio: false }
+      : { video: { facingMode: { ideal: 'environment' },
+                   width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false };
+
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    v.srcObject = stream;
+
+    await playStreamOnce(v);                 // <-- ensure it actually starts rendering
+    uiError('');
+
+    // Belt & suspenders: if metadata is already there, kick the loop now
+    if (v.readyState >= 2) requestAnimationFrame(loop);
+  }catch(e){
+    uiError('Failed to start camera: ' + e.message);
+    throw e;
+  }
+}
+
+async function init(){
+  // Debug what the page thinks the origin is
+  const dbg = `proto=${location.protocol} host=${location.hostname} secure=${window.isSecureContext}`;
+  console.log('[origin]', dbg);
+
+  // Allow HTTPS anywhere OR HTTP on loopback (localhost/127.0.0.1/::1/[::1])
+  const isLoopback = /^(localhost|127\.0\.0\.1|::1|\[::1\])$/.test(location.hostname);
+  const allowed = window.isSecureContext || (location.protocol === 'http:' && isLoopback);
+
+  if (!allowed){
+    uiError('Camera requires HTTPS or http://localhost. ' + dbg);
+    return;
+  }
+
+  try{
+    const s = await navigator.mediaDevices.getUserMedia({ video:true, audio:false });
+    s.getTracks().forEach(t=>t.stop());
+  }catch(e){
+    uiError('getUserMedia failed: ' + e.name + ' — ' + e.message + ' | ' + dbg);
+    return;
+  }
+
+  await listDevices();
+  if (devSel.value) await start(devSel.value);
+}
+
+document.getElementById('startBtn').onclick=init;
+devSel.addEventListener('change',()=>start(devSel.value));
+inclNeutrals.addEventListener('change',()=>{emaPct=null;});
+navigator.mediaDevices?.addEventListener?.('devicechange', listDevices);
+
+/* ===== Utilities ===== */
+function rgb2hsv(r,g,b){r/=255;g/=255;b/=255;const max=Math.max(r,g,b),min=Math.min(r,g,b);let h,s,v=max;const d=max-min;s=max===0?0:d/max;
+if(max===min)h=0;else{switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break}h/=6}return[h,s,v]}
+function kmeans(pixels,k=3,maxIter=8){const n=pixels.length/3;const centers=new Array(k).fill(0).map(_=>[0,0,0]);const first=Math.floor(Math.random()*n);centers[0]=[pixels[first*3],pixels[first*3+1],pixels[first*3+2]];
+for(let ci=1;ci<k;ci++){let farIdx=0,farDist=-1;for(let i=0;i<n;i++){const r=pixels[i*3],g=pixels[i*3+1],b=pixels[i*3+2];let dmin=1e9;for(let j=0;j<ci;j++){const dr=r-centers[j][0],dg=g-centers[j][1],db=b-centers[j][2];const d=dr*dr+dg*dg+db*db;if(d<dmin)dmin=d}
+if(dmin>farDist){farDist=dmin;farIdx=i}}centers[ci]=[pixels[farIdx*3],pixels[farIdx*3+1],pixels[farIdx*3+2]]}
+const assign=new Int16Array(n);for(let it=0;it<maxIter;it++){for(let i=0;i<n;i++){const r=pixels[i*3],g=pixels[i*3+1],b=pixels[i*3+2];let best=-1,bd=1e9;for(let j=0;j<k;j++){const dr=r-centers[j][0],dg=g-centers[j][1],db=b-centers[j][2];const d=dr*dr+dg*dg+db*db;if(d<bd){bd=d;best=j}}assign[i]=best}
+const sum=centers.map(()=>[0,0,0,0]);for(let i=0;i<n;i++){const a=assign[i];const off=i*3;sum[a][0]+=pixels[off];sum[a][1]+=pixels[off+1];sum[a][2]+=pixels[off+2];sum[a][3]++}
+for(let j=0;j<k;j++){if(sum[j][3]>0){centers[j][0]=sum[j][0]/sum[j][3];centers[j][1]=sum[j][1]/sum[j][3];centers[j][2]=sum[j][2]/sum[j][3]}}}
+const counts=new Array(k).fill(0);for(let i=0;i<n;i++)counts[assign[i]]++;return{centers,counts}}
+function grade6010(pcts){
+  const a=[...pcts].sort((x,y)=>y-x).slice(0,3);
+  const diffs=a.map((v,i)=>Math.abs(v-[60,30,10][i]));
+  const weights=[0.5,0.35,0.15];
+  const penalty=diffs.reduce((acc,d,i)=>acc+weights[i]*Math.min(1,d/30),0);
+  const score=Math.max(0,100*(1-penalty));
+  let tag='warn'; if(score>=85) tag='pass'; else if(score<60) tag='fail';
+  return {score:Math.round(score), tag, actual:a.map(v=>Math.round(v))};
+}
+
+/* ===== Ghost / Wipe overlay ===== */
+const gcv = document.getElementById('ghost');
+const gctx = gcv.getContext('2d', { willReadFrequently:true });
+const refUpload = document.getElementById('refUpload');
+const grabRefBtn = document.getElementById('grabRef');
+const overlayMode = document.getElementById('overlayMode');
+const alpha = document.getElementById('alpha');
+const scale = document.getElementById('scale');
+const offx = document.getElementById('offx');
+const offy = document.getElementById('offy');
+const flip = document.getElementById('flip');
+const grid = document.getElementById('grid');
+const wipe = document.getElementById('wipe');
+const wipeWrap = document.getElementById('wipeWrap');
+
+let refImg = null;
+
+refUpload.addEventListener('change', e=>{
+  const f = e.target.files?.[0]; if(!f) return;
+  const url = URL.createObjectURL(f);
+  const img = new Image(); img.onload = ()=>{ refImg = img; URL.revokeObjectURL(url); }; img.src = url;
+});
+grabRefBtn.addEventListener('click', ()=>{
+  if (v.videoWidth===0) return;
+  const oc = document.createElement('canvas');
+  oc.width = v.videoWidth; oc.height = v.videoHeight;
+  oc.getContext('2d').drawImage(v, 0, 0);
+  const img = new Image(); img.onload = ()=>{ refImg = img; };
+  img.src = oc.toDataURL('image/png');
+});
+overlayMode.addEventListener('change', ()=>{
+  wipeWrap.style.display = overlayMode.value==='wipe' ? 'inline-block' : 'none';
+});
+
+function drawGrid(ctx, W,H){
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = 1;
+  // thirds
+  ctx.beginPath();
+  ctx.moveTo(W/3, 0); ctx.lineTo(W/3, H);
+  ctx.moveTo(2*W/3, 0); ctx.lineTo(2*W/3, H);
+  ctx.moveTo(0, H/3); ctx.lineTo(W, H/3);
+  ctx.moveTo(0, 2*H/3); ctx.lineTo(W, 2*H/3);
+  ctx.stroke();
+  // center crosshair
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.beginPath();
+  ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H);
+  ctx.moveTo(0, H/2); ctx.lineTo(W, H/2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawGhost(){
+  const W = gcv.width = v.clientWidth || v.videoWidth;
+  const H = gcv.height = v.clientHeight || (v.videoHeight * (W/(v.videoWidth||W))|0);
+  const ctx = gctx;
+  ctx.clearRect(0,0,W,H);
+
+  // Draw reference (ghost or wipe)
+  if (refImg && W>0 && H>0){
+    const s = (parseFloat(scale.value)||100)/100;
+    const a = (parseFloat(alpha.value)||0)/100;
+    const dx = parseInt(offx.value)||0;
+    const dy = parseInt(offy.value)||0;
+    const doFlip = !!flip.checked;
+
+    const rW = refImg.naturalWidth || refImg.width;
+    const rH = refImg.naturalHeight || refImg.height;
+    const base = Math.min(W/rW, H/rH);
+    const drawW = rW*base*s;
+    const drawH = rH*base*s;
+    const x = ((W - drawW)/2) + dx;
+    const y = ((H - drawH)/2) + dy;
+
+    ctx.save();
+    if (overlayMode.value === 'overlay'){
+      ctx.globalAlpha = a;
+      if (doFlip){
+        ctx.translate(W,0); ctx.scale(-1,1);
+        ctx.drawImage(refImg, (W - x - drawW), y, drawW, drawH);
+      } else {
+        ctx.drawImage(refImg, x, y, drawW, drawH);
+      }
+      ctx.globalAlpha = 1.0;
+    } else {
+      const pct = (parseFloat(wipe.value)||50)/100;
+      const wipeX = W * pct;
+      // left: ref
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0,0,wipeX,H); ctx.clip();
+      if (doFlip){ ctx.translate(W,0); ctx.scale(-1,1); ctx.drawImage(refImg, (W - x - drawW), y, drawW, drawH); }
+      else { ctx.drawImage(refImg, x, y, drawW, drawH); }
+      ctx.restore();
+      // handle
+      ctx.fillStyle='rgba(255,255,255,0.65)'; ctx.fillRect(wipeX-1, 0, 2, H);
+    }
+    ctx.restore();
+  }
+
+  if (grid.checked) drawGrid(ctx, gcv.width, gcv.height);
+}
+
+// Arrow keys to nudge; [ ] for opacity
+window.addEventListener('keydown', (e)=>{
+  const step = e.shiftKey ? 10 : 2;
+  if (e.key==='ArrowLeft')  { offx.value = (+offx.value||0) - step; e.preventDefault(); }
+  if (e.key==='ArrowRight') { offx.value = (+offx.value||0) + step; e.preventDefault(); }
+  if (e.key==='ArrowUp')    { offy.value = (+offy.value||0) - step; e.preventDefault(); }
+  if (e.key==='ArrowDown')  { offy.value = (+offy.value||0) + step; e.preventDefault(); }
+  if (e.key==='[')          { alpha.value = Math.max(0, (+alpha.value||0)-2); }
+  if (e.key===']')          { alpha.value = Math.min(100, (+alpha.value||0)+2); }
+});
+
+/* ===== Golden Ratio HUD & scoring ===== */
+const phiOn = document.getElementById('phiOn');
+const phiSpiralSel = document.getElementById('phiSpiral');
+const phiQ = document.getElementById('phiQ');
+const phiScoreEl = document.getElementById('phiScore');
+
+// NEW: compute the exact video-content rect within the overlay canvas
+function getFrameRect(){
+  const W = gcv.width, H = gcv.height;
+  const vAR = (v.videoWidth||0) / (v.videoHeight||1);
+  if (!isFinite(vAR) || vAR <= 0) return {x:0,y:0,w:W,h:H};
+  const boxAR = W / H;
+  if (boxAR > vAR) { // pillarbox: side bars
+    const w = H * vAR, x = (W - w) / 2;
+    return {x, y:0, w, h:H};
+  } else {           // letterbox: top/bottom bars
+    const h = W / vAR, y = (H - h) / 2;
+    return {x:0, y, w:W, h};
+  }
+}
+
+function drawPhiGrid(ctx, rect){
+  const {x,y,w,h} = rect;
+  const phi = 1.61803398875;
+  const x1 = x + w/phi, x2 = x + w - w/phi;
+  const y1 = y + h/phi, y2 = y + h - h/phi;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+  ctx.setLineDash([8,6]); ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x1,y); ctx.lineTo(x1,y+h);
+  ctx.moveTo(x2,y); ctx.lineTo(x2,y+h);
+  ctx.moveTo(x,y1); ctx.lineTo(x+w,y1);
+  ctx.moveTo(x,y2); ctx.lineTo(x+w,y2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  [[x1,y1],[x1,y2],[x2,y1],[x2,y2]].forEach(([px,py])=>{
+    ctx.beginPath(); ctx.arc(px,py,4,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.fill();
+  });
+  ctx.restore();
+}
+
+function drawPhiSpiral(ctx, rect, corner='auto', fit='inscribe'){
+  if (corner==='off') return;
+  const {x:bx, y:by, w:BW, h:BH} = rect;
+  const phi = 1.61803398875;
+  const frameAR = BW / BH;
+
+  // Choose golden rect size and position
+  let rw, rh, rx, ry;
+  if (fit === 'cover'){
+    if (frameAR >= phi){ rw = BW; rh = BW / phi; rx = bx; ry = by + (BH - rh)/2; }
+    else               { rh = BH; rw = BH * phi; rx = bx + (BW - rw)/2; ry = by; }
+  } else { // inscribe (fit inside)
+    if (frameAR >= phi){ rh = BH; rw = BH * phi; rx = bx + (BW - rw)/2; ry = by; }
+    else               { rw = BW; rh = BW / phi; rx = bx; ry = by + (BH - rh)/2; }
+  }
+
+  const use = corner==='auto' ? 'tr' : corner;
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  ctx.lineWidth = 2; ctx.setLineDash([6,6]);
+
+  // draw nested φ rectangles + quarter arcs
+  let x=rx, y=ry, w=rw, h=rh, dir=use, W0=rw, H0=rh;
+  for (let i=0;i<6;i++){
+    ctx.strokeRect(x,y,w,h);
+    ctx.beginPath();
+    if (dir==='tl'){ ctx.arc(x+w, y+h, Math.min(w,h), Math.PI, 1.5*Math.PI); dir='bl'; }
+    else if (dir==='tr'){ ctx.arc(x, y+h, Math.min(w,h), 1.5*Math.PI, 0); dir='tl'; }
+    else if (dir==='br'){ ctx.arc(x, y, Math.min(w,h), 0, 0.5*Math.PI); dir='tr'; }
+    else if (dir==='bl'){ ctx.arc(x+w, y, Math.min(w,h), 0.5*Math.PI, Math.PI); dir='br'; }
+    ctx.stroke();
+    // shrink by φ, keep aligned to the chosen corner
+    if (w >= h){ const nw = w/phi; if (use==='tr' || use==='br') x += (w - nw); w = nw; }
+    else        { const nh = h/phi; if (use==='bl' || use==='br') y += (h - nh); h = nh; }
+  }
+  ctx.restore();
+}
+
+async function computeGoldGaze(imgData, w, h){
+  const d = imgData.data;
+
+  // --- Build base channels
+  const Y = new Float32Array(w*h);   // luminance
+  const FT = new Float32Array(w*h);  // frequency-tuned color saliency (Lab distance to mean)
+  const EDGE = new Float32Array(w*h);
+  const MOT = new Float32Array(w*h); // motion energy
+  const FACE = new Float32Array(w*h);// face prior heatmap
+
+  // 1) Compute Lab mean (subsample for speed)
+  let Lm=0, am=0, bm=0, n=0;
+  for(let y=0;y<h;y+=2){
+    for(let x=0;x<w;x+=2){
+      const i=(y*w+x)*4; const [L,a,b] = rgb2lab(d[i],d[i+1],d[i+2]);
+      Lm+=L; am+=a; bm+=b; n++;
+    }
+  }
+  Lm/=n; am/=n; bm/=n;
+
+  // 2) Per-pixel: Y and FT saliency (Lab distance squared)
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      const i=(y*w+x)*4;
+      const r=d[i], g=d[i+1], b=d[i+2];
+      const [L,a,b2] = rgb2lab(r,g,b);
+      Y[y*w+x] = 0.2126*r + 0.7152*g + 0.0722*b;
+      const dl=L-Lm, da=a-am, db=b2-bm;
+      FT[y*w+x] = dl*dl + da*da + db*db;
+    }
+  }
+  boxBlur(FT,w,h,1);
+
+  // 3) Edge magnitude (Sobel)
+  for(let y=1;y<h-1;y++){
+    for(let x=1;x<w-1;x++){
+      const p=y*w+x;
+      const xm1=p-1, xp1=p+1, ym1=p-w, yp1=p+w;
+      const gx = -Y[ym1-1]-2*Y[p-1]-Y[yp1-1] + Y[ym1+1]+2*Y[p+1]+Y[yp1+1];
+      const gy = -Y[ym1-1]-2*Y[ym1]-Y[ym1+1] + Y[yp1-1]+2*Y[yp1]+Y[yp1+1];
+      EDGE[p] = Math.hypot(gx,gy);
+    }
+  }
+
+  // 4) Motion energy
+  if (!prevY) prevY = Y.slice();
+  for(let i=0;i<w*h;i++){
+    MOT[i] = Math.abs(Y[i] - prevY[i]);
+    prevY[i] = prevY[i]*0.6 + Y[i]*0.4; // EMA
+  }
+  boxBlur(MOT,w,h,1);
+
+  // 5) Face prior (optional & throttled)
+  if (gazeFace?.checked && faceDet && (++faceTick % 6 === 0)){
+    // Detect on the same small canvas (cv) we drew into; make an ImageData->canvas element
+    const tmp = document.createElement('canvas');
+    tmp.width=w; tmp.height=h;
+    tmp.getContext('2d').putImageData(imgData,0,0);
+    // Non-blocking update
+    faceDet.detect(tmp).then(res => { faces = res||[]; }).catch(()=>{ faces=[]; });
+  }
+  if (faces && faces.length){
+    for (const f of faces){
+      // f.boundingBox is relative to the canvas we passed to detect()
+      const bb = f.boundingBox;
+      const cx = Math.round(bb.x + bb.width/2);
+      const cy = Math.round(bb.y + bb.height/2);
+      const sigma = Math.max(6, Math.round(Math.max(bb.width, bb.height)/6));
+      addGaussian(FACE, w,h, cx,cy, sigma, 1.0);
+    }
+    boxBlur(FACE,w,h,1);
+  }
+
+  // --- Normalize maps to [0,1]
+  function normInPlace(A){
+    let mx=0; for (let i=0;i<A.length;i++) if (A[i]>mx) mx=A[i];
+    if (mx>0) for (let i=0;i<A.length;i++) A[i]/=mx;
+  }
+  normInPlace(FT); normInPlace(EDGE); normInPlace(MOT); normInPlace(FACE);
+
+  // --- Fuse cues (weights sum to 1; re-normalize if a cue is missing)
+  let wFT=0.40, wED=0.20, wMO=(gazeMotion?.checked?0.20:0), wFA=(faces?.length?0.20:0);
+  let wsum = wFT+wED+wMO+wFA; if (wsum===0) wsum=1;
+  wFT/=wsum; wED/=wsum; wMO/=wsum; wFA/=wsum;
+
+  const S = new Float32Array(w*h);
+  for (let i=0;i<S.length;i++){
+    S[i] = wFT*FT[i] + wED*EDGE[i] + wMO*MOT[i] + wFA*FACE[i];
+  }
+
+  // --- Pick top Q% and compute weighted centroid
+  const q = parseInt(phiQ.value)||5;
+  const copy = Array.from(S).sort((a,b)=>b-a);
+  const thresh = copy[Math.max(0, Math.floor((q/100)*copy.length)-1)] || 0;
+  let sum=0, sx=0, sy=0;
+  for (let y=0;y<h;y++){
+    for (let x=0;x<w;x++){
+      const idx=y*w+x, wgt = S[idx]>=thresh ? S[idx] : 0;
+      if (wgt>0){ sum+=wgt; sx+=x*wgt; sy+=y*wgt; }
+    }
+  }
+  if (sum===0) return { cx:w/2, cy:h/2, S:null };
+  return { cx:sx/sum, cy:sy/sum, S };
+}
+
+
+function saliencyAndPhiScoreFromImageData(imgData, w, h) {
+  const d = imgData.data;
+  const Y = new Float32Array(w*h);
+  const S = new Float32Array(w*h);
+
+  // read once (not per pixel)
+  const satWEl = document.getElementById('satW');
+  const satGEl = document.getElementById('satG');
+  const beta  = satWEl ? (+satWEl.value)/100 : 0;    // 0..1
+  const gamma = satGEl ? (+satGEl.value)/100 : 1;    // ~0.5..1.4
+
+  for (let i=0, p=0; i<d.length; i+=4, p++){
+    const r=d[i], g=d[i+1], b=d[i+2];
+    const y = 0.2126*r + 0.7152*g + 0.0722*b;
+    const maxc = Math.max(r,g,b), minc = Math.min(r,g,b);
+    const sat = maxc ? (maxc - minc)/maxc : 0;
+    Y[p] = y;
+
+    const satCurve = Math.pow(sat, gamma);  // compress/expand response
+    S[p] = (1 - beta) + beta * satCurve;    // luminance-first, controlled sat boost
+  }
+  const blur = new Float32Array(w*h);
+  for (let y=1; y<h-1; y++){
+    for (let x=1; x<w-1; x++){
+      let acc=0;
+      for (let dy=-1; dy<=1; dy++)
+        for (let dx=-1; dx<=1; dx++)
+          acc += Y[(y+dy)*w + (x+dx)];
+      blur[y*w+x] = acc/9;
+    }
+  }
+  const G = new Float32Array(w*h);
+  for (let y=1; y<h-1; y++){
+    for (let x=1; x<w-1; x++){
+      const p = y*w+x;
+      const gx = -Y[p-w-1] -2*Y[p-1] -Y[p+w-1] + Y[p-w+1] + 2*Y[p+1] + Y[p+w+1];
+      const gy = -Y[p-w-1] -2*Y[p-w] -Y[p-w+1] + Y[p+w-1] + 2*Y[p+w] + Y[p+w+1];
+      G[p] = Math.hypot(gx,gy);
+    }
+  }
+  let maxG=1e-6, maxC=1e-6;
+  for (let i=0;i<w*h;i++){
+    const lc = Math.abs(Y[i] - blur[i]);
+    if (G[i]>maxG) maxG=G[i];
+    if (lc>maxC) maxC=lc;
+  }
+  for (let i=0;i<w*h;i++){
+    const lc = Math.abs(Y[i] - blur[i])/maxC;
+    const eg = G[i]/maxG;
+    S[i] = S[i] * (0.5 + 0.5*lc) * (0.5 + 0.5*eg);
+  }
+  const q = parseInt(phiQ.value)||5;
+  const flat = Array.from(S);
+  flat.sort((a,b)=>b-a);
+  const thresh = flat[Math.max(0, Math.floor((q/100)*flat.length)-1)] || 0;
+  let sum=0, sx=0, sy=0;
+  for (let y=0; y<h; y++){
+    for (let x=0; x<w; x++){
+      const p = y*w+x; const wgt = S[p] >= thresh ? S[p] : 0;
+      if (wgt>0){ sum += wgt; sx += x*wgt; sy += y*wgt; }
+    }
+  }
+  if (sum === 0) return { cx: w/2, cy: h/2, score: 0, bestCorner: null };
+  const cx = sx/sum, cy = sy/sum;
+  const phi = 1.61803398875;
+  const pts = [[w/phi,h/phi],[w/phi,h-h/phi],[w-w/phi,h/phi],[w-w/phi,h-h/phi]];
+  let bestD = 1e9, bestIdx = 0;
+  for (let i=0;i<4;i++){
+    const [px,py]=pts[i];
+    const d2 = (cx-px)*(cx-px) + (cy-py)*(cy-py);
+    if (d2<bestD){ bestD=d2; bestIdx=i; }
+  }
+  const dmin = Math.sqrt(bestD);
+  const diag = Math.hypot(w,h);
+  const score = Math.max(0, Math.min(100, Math.round(100*(1 - dmin/(0.15*diag)))));
+  const corners = ['tl','bl','tr','br'];
+  return { cx, cy, score, bestCorner: corners[bestIdx] };
+}
+function drawPhiMarker(ctx, W,H, cx,cy){
+  ctx.save();
+  ctx.fillStyle='rgba(0,255,180,0.9)';
+  ctx.strokeStyle='rgba(0,0,0,0.6)';
+  ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+// Gaze-dot controls/state
+const gazeOn = document.getElementById('gazeOn');
+const gazeFace = document.getElementById('gazeFace');
+const gazeMotion = document.getElementById('gazeMotion');
+
+let prevY = null;                // last-frame luminance, for motion
+let faceDet = null, faces = [];  // FaceDetector results
+let faceTick = 0;                // throttle face detection
+
+// Try native FaceDetector if present (Chrome/Edge/Android; Safari varies)
+try {
+  if ('FaceDetector' in window) faceDet = new FaceDetector({ fastMode:true, maxDetectedFaces:5 });
+} catch(_) {}
+
+
+/* ===== Loop ===== */
+let lastMean=null;
+function sceneCut(mean, th=12){
+  if(!lastMean){ lastMean = mean; return false; }
+  const d = Math.hypot(mean[0]-lastMean[0], mean[1]-lastMean[1], mean[2]-lastMean[2]);
+  lastMean = mean; return d > th;
+}
+
+function loop(){
+  if (v.videoWidth===0){ requestAnimationFrame(loop); return; }
+
+  // Draw overlay (ghost/grid)
+  drawGhost();
+
+  // === Color analysis ===
+  const scaleX = DOWNSCALE_W / v.videoWidth;
+  const w = DOWNSCALE_W, h = Math.round(v.videoHeight * scaleX);
+  cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d', { willReadFrequently:true });
+  ctx.drawImage(v, 0, 0, w, h);
+  const imgData = ctx.getImageData(0,0,w,h);
+  const data = imgData.data;
+
+  // mean for scene cut
+  let r=0,g=0,b=0,cnt=0;
+  for(let i=0;i<data.length;i+=4*8){ r+=data[i]; g+=data[i+1]; b+=data[i+2]; cnt++; }
+  const mean=[r/cnt,g/cnt,b/cnt];
+  if (sceneCut(mean)) emaPct = null;
+
+  // subsample & neutral filter
+  const step = 4*3;
+  const buf = [];
+  for (let i=0;i<data.length;i+=step){
+    const R=data[i], G=data[i+1], B=data[i+2];
+    const [,sat] = rgb2hsv(R,G,B);
+    if (inclNeutrals.checked || sat>=0.12){ buf.push(R,G,B); }
+  }
+  if(!buf.length){ requestAnimationFrame(loop); return; }
+
+  const arr = new Float32Array(buf);
+  const { centers, counts } = kmeans(arr, K, 7);
+  const total = counts.reduce((a,b)=>a+b,0) || 1;
+  const sw = counts.map((c,i)=>{
+    const [R,G,B]=centers[i].map(x=>Math.max(0,Math.min(255,Math.round(x))));
+    return { rgb:[R,G,B], pct: 100*c/total };
+  }).sort((a,b)=>b.pct-a.pct).slice(0,3);
+
+  const vec = sw.map(s=>s.pct);
+  if (!emaPct) emaPct = vec;
+  else emaPct = emaPct.map((p,i)=> p*(1-EMA) + vec[i]*EMA);
+
+  bars.innerHTML = ''; legend.innerHTML = '';
+  const sorted = sw.map((s,i)=> ({...s, pct: emaPct[i]}));
+  const totPct = sorted.reduce((a,b)=>a+b.pct,0) || 1;
+
+  sorted.forEach((s)=>{
+    const pct = s.pct * 100 / totPct;
+    const div = document.createElement('div');
+    div.className='bar';
+    const fill = document.createElement('div');
+    fill.className='fill';
+    fill.style.width = `${pct.toFixed(2)}%`;
+    fill.style.background = `rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})`;
+    const label = document.createElement('span');
+    const hex = '#'+s.rgb.map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+    label.textContent = `${pct.toFixed(1)}%  ${hex}`;
+    div.appendChild(fill); div.appendChild(label); bars.appendChild(div);
+    const swEl = document.createElement('span');
+    swEl.className='swatch'; swEl.style.background=`rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})`; legend.appendChild(swEl);
+  });
+
+  const pcts = sorted.map(s=> s.pct * 100 / totPct);
+  const {score, tag, actual} = grade6010(pcts);
+  actualEl.textContent = `${actual[0]} / ${actual[1]} / ${actual[2]}`;
+  scoreEl.textContent = score; scoreEl.className = `tag ${tag}`;
+
+// === Golden ratio HUD ===
+if (phiOn.checked) {
+  const rect = getFrameRect();
+  drawPhiGrid(gctx, rect);
+
+  // green dot + φ-score (luma/contrast/edge + optional sat boost)
+  const { cx, cy, score: phiScore, bestCorner } =
+    saliencyAndPhiScoreFromImageData(imgData, w, h);
+
+  const sx = rect.x + (cx / w) * rect.w;
+  const sy = rect.y + (cy / h) * rect.h;
+  drawPhiMarker(gctx, gcv.width, gcv.height, sx, sy);
+
+  // gold “gaze” dot (multi-cue fusion)
+  if (gazeOn.checked){
+    computeGoldGaze(imgData, w, h).then(({ cx: gcx, cy: gcy })=>{
+      const gx = rect.x + (gcx / w) * rect.w;
+      const gy = rect.y + (gcy / h) * rect.h;
+      drawGoldMarker(gctx, gx, gy);
+    });
+  }
+
+  // optional spiral (auto orient toward detected hot corner)
+  const mode = phiSpiralSel.value;
+  const fit  = document.getElementById('phiFit').value; // "inscribe" | "cover"
+  const spiralCorner = mode==='auto' ? (bestCorner || 'tr') : mode;
+  if (mode !== 'off') drawPhiSpiral(gctx, rect, spiralCorner, fit);
+
+  // HUD score badge
+  phiScoreEl.textContent = phiScore;
+  phiScoreEl.className = 'tag ' + (phiScore>=85 ? 'pass' : (phiScore<60 ? 'fail' : 'warn'));
+} else {
+  phiScoreEl.textContent = '--';
+  phiScoreEl.className = 'tag';
+}
+
+
+  ('requestVideoFrameCallback' in HTMLVideoElement.prototype)
+    ? v.requestVideoFrameCallback(()=>loop())
+    : requestAnimationFrame(loop);
+}
+v.addEventListener('loadeddata', loop);
+</script>
+</html>

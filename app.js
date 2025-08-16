@@ -17,8 +17,6 @@ function updRange(el){
   el.style.setProperty('--pct', pct + '%');
 }
 
-let prevScoreInt = null;  // tracks last integer score
-
 /* ===== audio cue when score hits 100 ===== */
 let audioCtx;
 function ensureAudio(){
@@ -35,19 +33,29 @@ function playChime(){
   const g = audioCtx.createGain();
   o.type = 'sine';
   o.frequency.setValueAtTime(880, now);          // A5
-  g.gain.setValueAtTime(0.0001, now);            // fade-in
+  g.gain.setValueAtTime(0.0001, now);
   g.gain.exponentialRampToValueAtTime(0.2, now + 0.01);
-  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.18); // quick fade-out
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
   o.connect(g).connect(audioCtx.destination);
   o.start(now);
   o.stop(now + 0.2);
 }
 
+/* =========================
+   Global UI state for score updates
+   (single source of truth — no duplicates)
+========================= */
+let scoreUpdateMode   = localStorage.getItem('scoreUpdateMode') || 'frame'; // 'frame' | 'second'
+let lastScoreUpdateTs = 0;   // ms (performance.now())
+let prevScoreInt      = null; // last displayed score int (for chime)
 
 /* =========================
    Landing → Studio
 ========================= */
 document.addEventListener('DOMContentLoaded', () => {
+  // Lock scroll on landing
+  document.body.classList.add('lock');
+
   // Beauty: sync range rails
   document.querySelectorAll('input[type="range"]').forEach(el => {
     updRange(el);
@@ -59,18 +67,30 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#phiOn').checked = false;
   $('#phiSpiral').value = 'off';
 
+  // Score update select wiring (lives once, here)
+  const scoreUpdateSel = document.getElementById('scoreUpdate');
+  if (scoreUpdateSel) {
+    scoreUpdateSel.value = scoreUpdateMode;
+    scoreUpdateSel.addEventListener('change', (e) => {
+      scoreUpdateMode = e.target.value;                 // 'frame' | 'second'
+      localStorage.setItem('scoreUpdateMode', scoreUpdateMode);
+      lastScoreUpdateTs = 0;                            // force immediate refresh
+    });
+  }
+
   // Open Studio
   $('#openStudio')?.addEventListener('click', async () => {
-   ensureAudio(); 
+    ensureAudio();
     if (!(await ensureEntitled())) return;
     showStudio();
   });
 
   // Also expose Start Camera
   $('#startBtn')?.addEventListener('click', () => {
-  ensureAudio();                  // <-- add this
-  init();
+    ensureAudio();
+    init();
   });
+
   // overlay mode → show/hide wipe slider
   $('#overlayMode')?.addEventListener('change', () => {
     $('#wipeWrap').style.display = $('#overlayMode').value === 'wipe' ? 'inline-block' : 'none';
@@ -102,7 +122,7 @@ function showStudio(){
 }
 
 /* =========================
-   Optional paywall (disabled)
+   Optional paywall
 ========================= */
 function getMsLeft(){
   const started = +localStorage.getItem(TRIAL_KEY);
@@ -154,24 +174,6 @@ const devSel = $('#device'), inclNeutrals = $('#inclNeutrals'), errEl = $('#err'
 let emaPct=null;
 let stream=null;
 
-/* ===== Score update mode ===== */
-/* ===== Score update mode ===== */
-const scoreUpdateSel   = document.getElementById('scoreUpdate');  // <- id must match your HTML
-let scoreUpdateMode    = localStorage.getItem('scoreUpdateMode') || 'frame';
-let lastScoreUpdateTs  = 0;   // ms (performance.now())
-let prevScoreInt       = null;
-
-if (scoreUpdateSel) {
-  scoreUpdateSel.value = scoreUpdateMode;
-  scoreUpdateSel.addEventListener('change', (e) => {
-    scoreUpdateMode   = e.target.value;                 // 'frame' | 'second'
-    localStorage.setItem('scoreUpdateMode', scoreUpdateMode);
-    lastScoreUpdateTs = 0;                              // force immediate refresh
-  });
-}
-
-
-
 function uiError(msg){ errEl.textContent = msg||''; if(msg) console.warn(msg); }
 
 /* Smart default: try last used device, else back camera on phones, else any camera */
@@ -208,7 +210,6 @@ async function init(){
 
 /* Do a tiny one-shot getUserMedia call to populate device labels */
 async function ensurePermissionPriming(){
-  // If we already have permission (stream active or labels present), skip
   const labelsKnown = (await navigator.mediaDevices.enumerateDevices()).some(d=>d.kind==='videoinput' && d.label);
   if (labelsKnown) return;
   try{
@@ -251,7 +252,6 @@ devSel?.addEventListener('change', async ()=>{
   if (!id) return;
   localStorage.setItem(LAST_DEVICE_KEY, id);
   await start({ deviceId: { exact: id } }).catch(async (e)=>{
-    // Safari sometimes needs a generic fallback if deviceId exact fails
     console.warn('Exact device failed, fallback', e);
     await start(true);
   });
@@ -454,11 +454,6 @@ function drawPhiMarker(ctx, cx,cy){
 /* =========================
    Analysis loop (60/30/10 + HUD)
 ========================= */
-const scoreUpdateSel = document.getElementById('scoreUpdate');
-let scoreUpdateMode = localStorage.getItem('scoreUpdateMode') || 'frame';
-let lastScoreUpdateTs = 0;
-let prevScoreInt = null;
-
 let lastMean=null;
 function sceneCut(mean, th=12){ if(!lastMean){lastMean=mean;return false;} const d=Math.hypot(mean[0]-lastMean[0],mean[1]-lastMean[1],mean[2]-lastMean[2]); lastMean=mean; return d>th; }
 
@@ -534,6 +529,16 @@ function kmeans(pixels, k=3, maxIter=8){
   return { centers, counts };
 }
 
+function grade6010(pcts){
+  const a=[...pcts].sort((x,y)=>y-x).slice(0,3);
+  const diffs=a.map((v,i)=>Math.abs(v-[60,30,10][i]));
+  const weights=[0.5,0.35,0.15];
+  const penalty=diffs.reduce((acc,d,i)=>acc+weights[i]*Math.min(1,d/30),0);
+  const score=Math.max(0,100*(1-penalty));
+  let tag='warn'; if(score>=85) tag='pass'; else if(score<60) tag='fail';
+  return {score:Math.round(score), tag, actual:a.map(v=>Math.round(v))};
+}
+
 function loop(){
   if (v.videoWidth===0){ requestAnimationFrame(loop); return; }
 
@@ -594,27 +599,26 @@ function loop(){
     const swEl=document.createElement('span'); swEl.className='swatch'; swEl.style.background=`rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})`; legend.appendChild(swEl);
   });
 
-const pcts = sorted.map(s => (s.pct * 100) / totPct);
-const { score, tag, actual } = grade6010(pcts);
+  const pcts = sorted.map(s => (s.pct * 100) / totPct);
+  const { score, tag, actual } = grade6010(pcts);
 
-// throttle UI updates
-const now = performance.now();
-const shouldUpdateScore =
-  (scoreUpdateMode === 'frame') || (now - lastScoreUpdateTs >= 1000);
+  // throttle score UI updates
+  const now = performance.now();
+  const shouldUpdateScore =
+    (scoreUpdateMode === 'frame') || (now - lastScoreUpdateTs >= 1000);
 
-if (shouldUpdateScore) {
-  actualEl.textContent = `${actual[0]} / ${actual[1]} / ${actual[2]}`;
-  scoreEl.textContent = String(score);
-  scoreEl.className = `tag ${tag}`;
+  if (shouldUpdateScore) {
+    actualEl.textContent = `${actual[0]} / ${actual[1]} / ${actual[2]}`;
+    scoreEl.textContent = String(score);
+    scoreEl.className = `tag ${tag}`;
 
-  // chime only when the *displayed* score hits 100
-  if (typeof playChime === 'function' && prevScoreInt !== 100 && score === 100) {
-    playChime();
+    // chime only when the *displayed* score hits 100
+    if (typeof playChime === 'function' && prevScoreInt !== 100 && score === 100) {
+      playChime();
+    }
+    prevScoreInt = score;
+    lastScoreUpdateTs = now;
   }
-  prevScoreInt = score;
-  lastScoreUpdateTs = now;
-}
-
 
   // Golden HUD
   if ($('#phiOn').checked){
@@ -643,13 +647,3 @@ if (shouldUpdateScore) {
     : requestAnimationFrame(loop);
 }
 v.addEventListener('loadeddata', loop);
-
-function grade6010(pcts){
-  const a=[...pcts].sort((x,y)=>y-x).slice(0,3);
-  const diffs=a.map((v,i)=>Math.abs(v-[60,30,10][i]));
-  const weights=[0.5,0.35,0.15];
-  const penalty=diffs.reduce((acc,d,i)=>acc+weights[i]*Math.min(1,d/30),0);
-  const score=Math.max(0,100*(1-penalty));
-  let tag='warn'; if(score>=85) tag='pass'; else if(score<60) tag='fail';
-  return {score:Math.round(score), tag, actual:a.map(v=>Math.round(v))};
-}

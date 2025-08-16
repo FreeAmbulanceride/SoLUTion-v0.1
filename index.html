@@ -440,7 +440,7 @@ let emaPct=null;
 function uiError(msg){ errEl.textContent = msg||''; if(msg) console.warn(msg); }
 function isMobile(){ return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent); }
 
-<script>
+
 // --- camera device handling (robust desktop + mobile) ---
 const CAM_KEY = 'lastCam6010';
 
@@ -569,7 +569,7 @@ navigator.mediaDevices?.addEventListener?.('devicechange', async () => {
   // if a device disappeared, restart with new default
   if (!devSel.value) await start(pick);
 });
-</script>
+
 
 
 $('#startBtn').onclick=init;

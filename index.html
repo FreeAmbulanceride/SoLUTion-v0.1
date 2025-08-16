@@ -366,7 +366,7 @@ applyTheme(localStorage.getItem('uiTheme6010') || 'teal-mango');
 document.querySelectorAll('input[type="range"]').forEach(el=>{ updRange(el); el.addEventListener('input', ()=>updRange(el)); });
 
 /* ========= paywall (disabled by default) ========= */
-const ENABLE_PAYWALL = false; // change to true if you want to gate the app
+const ENABLE_PAYWALL = true; // change to true if you want to gate the app
 
 const TRIAL_DAYS = 3;
 const TRIAL_KEY = 'trialStartedAt_v1';
@@ -440,78 +440,137 @@ let emaPct=null;
 function uiError(msg){ errEl.textContent = msg||''; if(msg) console.warn(msg); }
 function isMobile(){ return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent); }
 
+<script>
+// --- camera device handling (robust desktop + mobile) ---
+const CAM_KEY = 'lastCam6010';
+
+const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+// Build dropdown, including virtual choices when they make sense
 async function listDevices(){
-  const devs=await navigator.mediaDevices.enumerateDevices();
-  const vids=devs.filter(d=>d.kind==='videoinput');
+  const devs = await navigator.mediaDevices.enumerateDevices();
+  const vids = devs.filter(d => d.kind === 'videoinput');
 
-  // Robust "virtual" facing options first for phones
-  const facingOpts = [
-    { value:'facing:user', label:'Selfie View' },
-    { value:'facing:environment', label:'Back Camera' },
-  ];
-  const deviceOpts = vids.map(d=>({ value:d.deviceId||'', label:d.label||'Camera' }));
+  // keep whatever was previously selected if still available
+  const last = localStorage.getItem(CAM_KEY) || '';
+  const prev = devSel.value;
 
-  devSel.innerHTML = [...facingOpts, ...deviceOpts]
-    .map(o=>`<option value="${o.value}">${o.label}</option>`).join('');
+  const parts = [];
 
-  // Prefer back camera by default on mobile
-  if (isMobile()) devSel.value = 'facing:environment';
-}
+  // “Auto” always first
+  parts.push(`<option value="__auto">Auto (recommended)</option>`);
 
-async function start(selectionValue){
-  let constraints;
-
-  if (typeof selectionValue === 'string' && selectionValue.startsWith('facing:')) {
-    const facing = selectionValue.split(':')[1]; // 'user' | 'environment'
-    constraints = { video:{ facingMode:{ exact:facing }, width:{ ideal:1920 }, height:{ ideal:1080 } }, audio:false };
-  } else if (selectionValue) {
-    constraints = { video:{ deviceId:{ exact:selectionValue } }, audio:false };
-  } else {
-    constraints = { video:true, audio:false };
+  // On mobile it’s useful to expose “Front/Back”
+  if (isMobile) {
+    parts.push(`<option value="__front">Front (selfie)</option>`);
+    parts.push(`<option value="__back">Back (world)</option>`);
   }
 
-  // stop previous stream
-  if (v.srcObject) v.srcObject.getTracks().forEach(t=>t.stop());
+  // Real devices
+  for (const d of vids) {
+    const label = d.label || 'Camera';
+    parts.push(`<option value="${d.deviceId}">${label}</option>`);
+  }
 
-  try{
-    v.srcObject = await navigator.mediaDevices.getUserMedia(constraints);
-    uiError('');
-  }catch(e1){
-    // relax constraints as fallback (older iOS)
-    try{
-      if (constraints.video && constraints.video.facingMode) {
-        constraints = { video:{ facingMode: selectionValue?.includes('environment') ? 'environment' : 'user' }, audio:false };
-      } else if (constraints.video && constraints.video.deviceId) {
-        constraints = { video:true, audio:false };
+  devSel.innerHTML = parts.join('');
+
+  // Prefer: last used → FaceTime/Integrated → first physical → Auto
+  const faceTime = vids.find(d => /facetime|integrated|built.?in/i.test(d.label || ''));
+  const firstReal = vids[0];
+
+  let pick =
+    (vids.some(d => d.deviceId === last) ? last : '') ||
+    (faceTime && faceTime.deviceId) ||
+    (firstReal && firstReal.deviceId) ||
+    '__auto';
+
+  // keep user’s current selection if still valid
+  if (prev && ([...vids.map(v=>v.deviceId),'__auto','__front','__back'].includes(prev))) {
+    pick = prev;
+  }
+  devSel.value = pick;
+  return { vids, pick };
+}
+
+// Start stream given a selection value (deviceId or virtual)
+async function start(selection){
+  let constraints = { audio: false, video: true };
+
+  if (selection === '__front') {
+    constraints = { audio:false, video:{ facingMode:'user' } };
+  } else if (selection === '__back') {
+    constraints = { audio:false, video:{ facingMode:{ exact:'environment' } } };
+  } else if (selection && selection !== '__auto') {
+    constraints = { audio:false, video:{ deviceId:{ exact: selection } } };
+  } else if (selection === '__auto') {
+    // Prefer environment on mobile, else default true
+    constraints = isMobile
+      ? { audio:false, video:{ facingMode:'environment' } }
+      : { audio:false, video:true };
+  }
+
+  // Try primary constraints
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+  } catch (e) {
+    // Smart fallbacks
+    try {
+      if (selection === '__back') {
+        stream = await navigator.mediaDevices.getUserMedia({ audio:false, video:{ facingMode:'environment' } });
+      } else if (selection && selection !== '__auto' && selection !== '__front') {
+        stream = await navigator.mediaDevices.getUserMedia({ audio:false, video:true });
+      } else {
+        throw e;
       }
-      v.srcObject = await navigator.mediaDevices.getUserMedia(constraints);
-      uiError('');
-    }catch(e2){
-      uiError('Failed to start camera: '+e2.message);
+    } catch (e2) {
+      uiError('Failed to start camera: ' + e2.message);
       throw e2;
     }
   }
+
+  // Attach and remember
+  if (v.srcObject) v.srcObject.getTracks().forEach(t=>t.stop());
+  v.srcObject = stream;
+  try { await v.play(); } catch(_) {}
+  uiError('');
+
+  // Persist the actual device id if we have it
+  const track = stream.getVideoTracks()[0];
+  const devId = track?.getSettings?.().deviceId;
+  if (devId) localStorage.setItem(CAM_KEY, devId);
+
+  return stream;
 }
 
+// Permission warm-up → populate menu → pick default → start
 async function init(){
   const isLoopback = /^(localhost|127\.0\.0\.1|::1|\[::1\])$/.test(location.hostname);
   const allowed = window.isSecureContext || (location.protocol==='http:' && isLoopback);
-  if(!allowed){ uiError('Requires video source for live metering.'); return; }
+  if (!allowed) { uiError('Camera requires HTTPS or http://localhost'); return; }
 
-  // Warm permission so labels appear
-  try{
-    const s = await navigator.mediaDevices.getUserMedia({video:true,audio:false});
-    s.getTracks().forEach(t=>t.stop());
-  }catch(e){
-    uiError('Permission/availability error: '+e.message);
+  // Warm permission so labels are available
+  try {
+    const warm = await navigator.mediaDevices.getUserMedia({ video:true, audio:false });
+    warm.getTracks().forEach(t=>t.stop());
+  } catch (e) {
+    uiError('Permission/availability error: ' + e.message);
     return;
   }
 
-  await listDevices();
-
-  // Auto-start back camera on mobile
-  if (isMobile()) await start(devSel.value);
+  const { pick } = await listDevices();
+  await start(pick);
 }
+
+// keep dropdown reactive
+devSel.addEventListener('change', () => start(devSel.value));
+navigator.mediaDevices?.addEventListener?.('devicechange', async () => {
+  const { pick } = await listDevices();
+  // if a device disappeared, restart with new default
+  if (!devSel.value) await start(pick);
+});
+</script>
+
 
 $('#startBtn').onclick=init;
 devSel.addEventListener('change',()=>start(devSel.value));

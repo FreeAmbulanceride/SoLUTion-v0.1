@@ -351,7 +351,7 @@ $('#btn-restore')?.addEventListener('click', ()=>{
 /* =========================
    Camera & devices
 ========================= */
-const TARGET=[60,30,10], K=3, DOWNSCALE_W=160, EMA=0.35;
+const TARGET=[60,30,10], K=3, DOWNSCALE_W=320, EMA=0.5;
 $('#kval') && ($('#kval').textContent=K);
 
 const v=$('#v'), cv=$('#c'), bars=$('#bars');

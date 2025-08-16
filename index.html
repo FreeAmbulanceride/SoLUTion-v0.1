@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>60/30/10 Monitor • Ghost Overlay • Golden HUD</title>
+  <title>soLUTion v0.9a // 60|30|10 Color Monitor • Reference Overlay • Golden Grid</title>
 
   <!-- Preload the landing hero image ) -->
   <link rel="preload" as="image" href="/SoLUTion-v0.1/soLUTion1a.png?v=2" />
@@ -195,7 +195,7 @@
       <div class="bg"></div>
       <div class="scrim"></div>
       <div class="content">
-        <h1>On-Set Color Ratio Metering</h1>
+        <h1>Fast, On-Set Color Ratio Metering per Frame</h1>
         <p>Live 60/30/10 color balance. Overlay and upload a reference img. Golden-ratio grid and focal point generator.</p>
         <div class="actions">
           <button id="openStudio" class="btn">OPEN STUDIO</button>
@@ -446,7 +446,7 @@ async function listDevices(){
 
   // Robust "virtual" facing options first for phones
   const facingOpts = [
-    { value:'facing:user', label:'Front Camera' },
+    { value:'facing:user', label:'Selfie View' },
     { value:'facing:environment', label:'Back Camera' },
   ];
   const deviceOpts = vids.map(d=>({ value:d.deviceId||'', label:d.label||'Camera' }));
@@ -496,7 +496,7 @@ async function start(selectionValue){
 async function init(){
   const isLoopback = /^(localhost|127\.0\.0\.1|::1|\[::1\])$/.test(location.hostname);
   const allowed = window.isSecureContext || (location.protocol==='http:' && isLoopback);
-  if(!allowed){ uiError('Camera requires HTTPS or http://localhost'); return; }
+  if(!allowed){ uiError('Requires video source for live metering.'); return; }
 
   // Warm permission so labels appear
   try{
@@ -758,6 +758,19 @@ function loop(){
   ctx.drawImage(v, 0, 0, w, h);
   const imgData = ctx.getImageData(0,0,w,h);
   const data = imgData.data;
+
+  const SAMPLE_EVERY = 2; // update every other frame (~15 fps on a 30 fps camera)
+let frame = 0;
+function loop(){
+  if (v.videoWidth === 0){ requestAnimationFrame(loop); return; }
+  if ((frame++ % SAMPLE_EVERY) !== 0) {
+    ('requestVideoFrameCallback' in HTMLVideoElement.prototype)
+      ? v.requestVideoFrameCallback(()=>loop())
+      : requestAnimationFrame(loop);
+    return;
+  }
+ 
+
 
   /* color clusters */
   let r=0,g=0,b=0,cnt=0; for(let i=0;i<data.length;i+=32){ r+=data[i]; g+=data[i+1]; b+=data[i+2]; cnt++; }

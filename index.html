@@ -52,6 +52,13 @@
       radial-gradient(60% 60% at 70% 10%, color-mix(in oklab, var(--ui-accent) 14%, transparent), transparent 60%),
       var(--ui-primary);
   }
+body.lock { overflow:hidden; }
+// at load
+document.body.classList.add('lock');
+// after opening studio
+document.body.classList.remove('lock');
+
+  
   .hero .card{
     width:min(900px, 96vw);
     padding:28px;
@@ -68,7 +75,13 @@
   #landing[hidden]{ display:none !important; }
 
   /* studio */
-  #studio{ min-height:100dvh; padding:10px 10px 24px; display:block }
+  #studio{
+  min-height:100dvh;
+  padding:10px 10px 24px;
+  /* no display here */
+}
+#studio[hidden]{ display:none !important; }  /* make the hidden attribute win */
+
   header.toolbar{
     position: sticky; top:0; z-index:10;
     display:flex; flex-wrap:wrap; gap:12px; align-items:center;

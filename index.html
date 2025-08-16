@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>60/30/10 Monitor • Ghost Overlay • Golden HUD</title>
 <style>
 canvas.hidden{ display:none; }
@@ -112,8 +112,115 @@ canvas.hidden{ display:none; }
   .muted{color:var(--ui-text-muted)}
   /* Subtle accent outline around the stage (counts toward the 10%) */
   #stage{outline:1px solid color-mix(in oklab, var(--ui-accent) 35%, transparent); outline-offset:8px; border-radius:18px}
+
+//MOBILE_FIRST LAYOUT CSS
+/* mobile layout: video first, controls as horizontal chips */
+:root{
+  --headH: 56px; /* fallback, JS sets actual value */
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
+}
+
+@media (max-width: 768px){
+  header{
+    position: fixed; top: 0; left: 0; right: 0;
+    padding: calc(6px + var(--safe-top)) 8px 6px;
+    display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto;
+    scrollbar-width: none;
+  }
+  header::-webkit-scrollbar{ display:none; }
+
+  /* each control group becomes a chip */
+  .group{ flex: 0 0 auto; padding: 6px 8px; gap: 8px; }
+
+  /* stage fills the rest of the screen under header */
+  #stage{
+    width: 100vw; max-width: 100vw; margin: 0;
+    height: calc(100svh - var(--headH) - var(--safe-bottom));
+    padding-top: var(--headH);
+    outline-offset: 0; border-radius: 0;
+  }
+
+  /* make the video “contain” inside that box, no weird stretching */
+  video{
+    width: 100%; height: 100%;
+    object-fit: contain; border-radius: 0; box-shadow: none;
+    background: #000;
+  }
+  canvas.ghost{ border-radius: 0; }
+
+  /* tighten overlays a bit on phones */
+  .overlay{ left: 8px; right: 8px; bottom: calc(8px + var(--safe-bottom)); }
+  .bars{ display: none; }           /* optional: hide 60/30/10 bars on phones */
+  .readout{ gap: 10px; font-size: 12px; }
+}
+
+
+
+
+/* Landing aesthetic */
+:root{
+  --grad1:#0b1220; --grad2:#101a33; --glass:rgba(255,255,255,0.06);
+  --glow: 0 10px 40px rgba(18,214,223,0.18);
+}
+body{ background: radial-gradient(1200px 800px at 70% -10%, var(--grad2), var(--grad1)); }
+
+.landing{ min-height:100svh; display:grid; grid-template-rows:auto 1fr auto; }
+.nav{ display:flex; justify-content:space-between; align-items:center; gap:12px;
+      padding:16px clamp(12px,4vw,24px); }
+.brand{ font-weight:900; letter-spacing:.3px; font-size:20px }
+.brand span{ color:var(--ui-accent); }
+.ghostlink{ opacity:.8; text-decoration:none; color:var(--ui-text); border:1px solid var(--ui-border);
+            padding:6px 10px; border-radius:999px; }
+.hero{ display:grid; place-items:center; text-align:center; padding: clamp(24px,6vw,48px); gap:16px; }
+.hero h1{ margin:0; font-size: clamp(28px,4.6vw,42px); line-height:1.1; }
+.hero p{ max-width:680px; opacity:.9 }
+.cta{ font-size:16px; padding:12px 18px; border-radius:12px; background:var(--ui-accent);
+      color:#0A0B0D; box-shadow: var(--glow); cursor:pointer; }
+.features{ display:grid; gap:10px; padding:24px clamp(12px,4vw,24px) 48px; list-style:none; margin:0; }
+.features li{ padding:12px 14px; border-radius:12px; background:var(--glass); border:1px solid var(--ui-border); }
+.small{ font-size:12px }
+code{ background:rgba(255,255,255,0.08); padding:2px 6px; border-radius:6px }
+
+/* Transition to studio */
+body.mode-studio #landing{ display:none }
+body.mode-studio #studio{ display:block }
+#studio{ display:block }
+
+/* Mobile comfort */
+@media (max-width: 768px){
+  .features{ padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* Subtle smoothing & GPU hints */
+#stage, video, canvas.ghost{ will-change: transform, opacity; }
+header{ contain: layout style; }
+
 </style>
 
+<section id="landing" class="landing">
+  <nav class="nav">
+    <div class="brand">6010<span> Studio</span></div>
+    <a class="ghostlink" href="#learn">Learn</a>
+  </nav>
+
+  <div class="hero">
+    <h1>Frame faster. Color smarter.</h1>
+    <p>Live 60/30/10 color balance, ghost/wipe continuity, Golden Ratio HUD, and gaze hot-spots—right in your browser.</p>
+    <button id="openStudio" class="cta">Open Studio</button>
+    <p class="muted small">Runs locally over HTTPS or <code>http://localhost</code>. No uploads.</p>
+  </div>
+
+  <ul class="features" id="learn">
+    <li><b>60/30/10</b> live color clustering with neutral control</li>
+    <li><b>Ghost / Split-Wipe</b> for shot continuity</li>
+    <li><b>Golden HUD</b> with aspect-aware spiral & φ scoring</li>
+    <li><b>Gaze Dot</b> (multi-cue saliency: color, edges, motion, faces)</li>
+  </ul>
+</section>
+
+
+<main id="studio" hidden>
 <header>
   <div class="group">
     <label>Theme
@@ -184,6 +291,7 @@ canvas.hidden{ display:none; }
     <label>sat curve <input id="satG" type="range" min="50" max="140" value="85"></label>
   </div>
 </header>
+</main>
 
 <div id="stage">
   <video id="v" playsinline autoplay muted></video>
@@ -201,8 +309,31 @@ canvas.hidden{ display:none; }
   </div>
 </div>
 
+// Landing → Studio transition with lazy camera start
+const openStudioBtn = document.getElementById('openStudio');
+openStudioBtn?.addEventListener('click', async ()=>{
+  document.body.classList.add('mode-studio');
+  // Ensure the studio is visible before measuring header height etc.
+  document.getElementById('studio').hidden = false;
+
+  // Kick your existing camera init (uses your secure-context checks)
+  try { await init(); } catch(_) {}
+
+  // Scroll to top just in case
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+
+
 <script>
 /* ===== Core setup ===== */
+function setHeadHeight(){
+  const h = document.querySelector('header')?.offsetHeight || 56;
+  document.documentElement.style.setProperty('--headH', h + 'px');
+}
+window.addEventListener('load', setHeadHeight);
+window.addEventListener('resize', setHeadHeight);
+new ResizeObserver(setHeadHeight).observe(document.querySelector('header'));
 
 // sRGB -> linear
 function srgbLin(c){ c/=255; return c<=0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4); }

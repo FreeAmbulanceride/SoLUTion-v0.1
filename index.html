@@ -6,7 +6,6 @@
 
 <style>
   :root{
-    /* 60/30/10 palette */
     --ui-primary:#0B1220;   /* 60% */
     --ui-secondary:#172036; /* 30% */
     --ui-accent:#F59E0B;    /* 10% */
@@ -17,7 +16,7 @@
     --ui-ring:rgba(245,158,11,0.55);
   }
 
-  /* optional alt themes (kept for future use) */
+  /* optional alt themes */
   body.theme-magenta-cosmos{
     --ui-primary:#0B0511; --ui-secondary:#1A0B2E; --ui-accent:#FF2E88;
     --ui-text:#FAF7FC; --ui-text-muted:#D8CFE0; --ui-border:rgba(255,255,255,0.10);
@@ -127,14 +126,10 @@
 
   /* target ticks (60/30/10) on bars */
   .bar .target{
-    position:absolute;
-    top:3px; bottom:3px;
-    width:3px;
-    background:var(--ui-accent);
-    border-radius:2px;
+    position:absolute; top:3px; bottom:3px; width:3px;
+    background:var(--ui-accent); border-radius:2px;
     box-shadow:0 0 0 1px rgba(0,0,0,.35), 0 0 6px rgba(0,0,0,.25);
-    transform:translateX(-50%);
-    pointer-events:none;
+    transform:translateX(-50%); pointer-events:none;
   }
 
   /* paywall */
@@ -158,19 +153,19 @@
   /* --- Mobile layout fixes --- */
   @media (max-width: 900px){
     header.toolbar{
-      position: static;                 /* let it scroll away */
-      overflow-x: auto;                 /* horizontal scroll for chips */
+      position: static;
+      overflow-x: auto;
       -webkit-overflow-scrolling: touch;
-      flex-wrap: nowrap;                /* one row */
+      flex-wrap: nowrap;
       gap: 10px;
     }
-    header.toolbar .group{ flex:0 0 auto }   /* keep chip width */
+    header.toolbar .group{ flex:0 0 auto }
     #stage{ width:100vw; margin:0; border-radius:0; outline:none }
     video, canvas.overlay{ border-radius:0 }
     .overlayHUD{ left:8px; right:8px; bottom:8px }
   }
   @media (max-width: 900px) and (orientation: landscape){
-    #stage{ min-height: calc(100dvh - 8px) } /* use full phone height */
+    #stage{ min-height: calc(100dvh - 8px) }
   }
 </style>
 
@@ -211,25 +206,25 @@
         </label>
         <label>opacity <input id="alpha" type="range" min="0" max="100" value="45"></label>
       </div>
-      
-<div class="group">
-  <button id="btnCapture" class="btn">Capture photo</button>
-</div>
+
+      <div class="group">
+        <button id="btnCapture" class="btn">Capture photo</button>
+      </div>
 
       <div class="group">
         <label>scale <input id="scale" type="range" min="50" max="150" value="100"></label>
         <label>x <input id="offx" type="range" min="-200" max="200" value="0"></label>
         <label>y <input id="offy" type="range" min="-200" max="200" value="0"></label>
         <label class="muted"><input id="flip" type="checkbox"> flip</label>
-        <label class="muted"><input id="grid" type="checkbox"> grid</label><!-- OFF by default -->
+        <label class="muted"><input id="grid" type="checkbox"> grid</label>
         <label class="muted" id="wipeWrap" style="display:none">wipe <input id="wipe" type="range" min="0" max="100" value="50"></label>
       </div>
 
       <div class="group">
-        <label><input id="phiOn" type="checkbox"> Golden HUD</label><!-- master OFF by default -->
+        <label><input id="phiOn" type="checkbox"> Golden HUD</label>
         <label>spiral
           <select id="phiSpiral">
-            <option value="off" selected>off — no spiral</option><!-- default OFF -->
+            <option value="off" selected>off — no spiral</option>
             <option value="auto">Auto Detect</option>
             <option value="tl">TL</option><option value="tr">TR</option>
             <option value="bl">BL</option><option value="br">BR</option>
@@ -285,96 +280,40 @@
 /* ========= tiny helpers ========= */
 const $ = sel => document.querySelector(sel);
 
-
-<script>
-// ---- Capture & Save (cross-platform best-effort) ----
-
-// Compose the exact frame as seen: video fitted into the visible rect + overlay canvas
+/* ========= Capture & Save ========= */
 async function captureFrameToBlob(includeOverlay = true){
   const W = gcv.width || v.clientWidth || v.videoWidth || 1280;
   const H = gcv.height || v.clientHeight || v.videoHeight || 720;
-
-  // Render at display resolution for a WYSIWYG capture
-  const oc = document.createElement('canvas');
-  oc.width = W; oc.height = H;
+  const oc = document.createElement('canvas'); oc.width = W; oc.height = H;
   const octx = oc.getContext('2d');
-
-  // Black background (matches video element background)
-  octx.fillStyle = '#000';
-  octx.fillRect(0, 0, W, H);
-
-  // Draw the video scaled like the UI does
-  const rect = (typeof getFrameRect === 'function')
-    ? getFrameRect()
-    : {x:0, y:0, w:W, h:H};
-  // draw full video scaled into the rect
-  try {
-    octx.drawImage(v, rect.x, rect.y, rect.w, rect.h);
-  } catch(_) {
-    // if the video isn't ready, bail gracefully
-  }
-
-  // Draw the overlay (ghost/grid/phi) exactly as seen
-  if (includeOverlay && gcv) {
-    octx.drawImage(gcv, 0, 0, W, H);
-  }
-
-  // JPEG is smaller and easier to share; tune quality as you like
+  octx.fillStyle = '#000'; octx.fillRect(0, 0, W, H);
+  const rect = (typeof getFrameRect === 'function') ? getFrameRect() : {x:0,y:0,w:W,h:H};
+  try { octx.drawImage(v, rect.x, rect.y, rect.w, rect.h); } catch(_) {}
+  if (includeOverlay && gcv) octx.drawImage(gcv, 0, 0, W, H);
   const blob = await new Promise(res => oc.toBlob(res, 'image/jpeg', 0.92));
   return blob;
 }
-
 async function saveCapture(){
   try{
-    // Let the UI paint one more frame before we snapshot
     await new Promise(r => requestAnimationFrame(r));
-
-    const blob = await captureFrameToBlob(true);
-    if (!blob) return;
-
+    const blob = await captureFrameToBlob(true); if (!blob) return;
     const filename = `6010-capture-${new Date().toISOString().replace(/[:.]/g,'-')}.jpg`;
     const file = new File([blob], filename, { type: 'image/jpeg' });
-
-    // Preferred: system share sheet (iOS/Android)
     if (navigator.canShare?.({ files:[file] })) {
-      await navigator.share({
-        files: [file],
-        title: '60/30/10 capture',
-        text: 'Captured with 60/30/10 Studio'
-      });
+      await navigator.share({ files:[file], title:'60/30/10 capture', text:'Captured with 60/30/10 Studio' });
       return;
     }
-
-    // Fallback: download (great on Android/desktop)
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.style.display = 'none';
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-
-    // iOS Safari often ignores programmatic downloads — open new tab as last resort
+    const a = document.createElement('a'); a.style.display='none'; a.href=url; a.download=filename;
+    document.body.appendChild(a); a.click();
     const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    if (isiOS) {
-      setTimeout(() => { window.open(url, '_blank'); }, 350);
-      // user can long-press → “Save Image” (goes to Photos)
-    }
-
-    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
-  }catch(e){
-    console.warn('Capture/share failed:', e);
-    alert('Could not save the photo. Try again or long-press the image if a new tab opened.');
-  }
+    if (isiOS) setTimeout(()=>window.open(url,'_blank'), 350);
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 2000);
+  }catch(e){ console.warn('Capture/share failed:', e); alert('Could not save the photo.'); }
 }
-
-// Wire up the button
 document.getElementById('btnCapture')?.addEventListener('click', saveCapture);
-</script>
 
-
-  
-/* ========= theme (kept, default to teal–mango) ========= */
+/* ========= theme ========= */
 function updRange(el){
   const min = +el.min || 0, max = +el.max || 100, val = +el.value || 0;
   const pct = ((val - min) / (max - min)) * 100;
@@ -393,64 +332,47 @@ document.querySelectorAll('input[type="range"]').forEach(el=>{ updRange(el); el.
 /* ========= soft paywall (3-day trial) ========= */
 const TRIAL_DAYS = 3;
 const TRIAL_KEY = 'trialStartedAt_v1';
-const PRO_KEY   = 'proEntitlement_v1'; // set after real checkout
-
-function getMsLeft(){
-  const started = +localStorage.getItem(TRIAL_KEY);
-  if (!started) return -1;
-  return (started + TRIAL_DAYS*86400000) - Date.now();
-}
-function fmtCountdown(ms){
-  if (ms <= 0) return 'trial ended';
-  const d = Math.floor(ms/86400000);
-  const h = Math.floor(ms%86400000/3600000);
-  const m = Math.floor(ms%3600000/60000);
-  return `${d}d ${h}h ${m}m left`;
-}
+const PRO_KEY   = 'proEntitlement_v1';
+function getMsLeft(){ const started=+localStorage.getItem(TRIAL_KEY); if(!started) return -1; return (started + TRIAL_DAYS*86400000) - Date.now(); }
+function fmtCountdown(ms){ if(ms<=0) return 'trial ended'; const d=Math.floor(ms/86400000), h=Math.floor(ms%86400000/3600000), m=Math.floor(ms%3600000/60000); return `${d}d ${h}h ${m}m left`; }
 function hasPro(){ return !!localStorage.getItem(PRO_KEY); }
 function showPaywall(msg){
-  const pw = $('#paywall'), msgEl = $('#pw-msg'), cdEl = $('#pw-countdown');
+  const pw=$('#paywall'), msgEl=$('#pw-msg'), cdEl=$('#pw-countdown');
   msgEl.firstChild.nodeValue = (msg || 'You’re on a free 3-day trial. ');
-  const upd = ()=>{ const ms=getMsLeft(); cdEl.textContent = ms>0 ? fmtCountdown(ms) : 'trial ended'; };
-  upd(); clearInterval(showPaywall._t); showPaywall._t = setInterval(upd, 15000);
-  pw.hidden = false;
+  const upd=()=>{ const ms=getMsLeft(); cdEl.textContent = ms>0 ? fmtCountdown(ms) : 'trial ended'; };
+  upd(); clearInterval(showPaywall._t); showPaywall._t=setInterval(upd,15000);
+  pw.hidden=false;
 }
-function hidePaywall(){ const pw=$('#paywall'); pw.hidden=true; if (showPaywall._t) clearInterval(showPaywall._t); }
+function hidePaywall(){ const pw=$('#paywall'); pw.hidden=true; if(showPaywall._t) clearInterval(showPaywall._t); }
 async function ensureEntitled(){
   if (hasPro()) return true;
-  const ms = getMsLeft();
-  if (ms === -1){ showPaywall('Start your free 3-day trial. '); return false; }
-  if (ms > 0){ hidePaywall(); return true; }
+  const ms=getMsLeft();
+  if (ms===-1){ showPaywall('Start your free 3-day trial. '); return false; }
+  if (ms>0){ hidePaywall(); return true; }
   showPaywall('Your trial ended. '); return false;
 }
-$('#btn-start-trial')?.addEventListener('click', ()=>{
-  if (!localStorage.getItem(TRIAL_KEY)) localStorage.setItem(TRIAL_KEY, Date.now().toString());
-  hidePaywall();
-});
+$('#btn-start-trial')?.addEventListener('click', ()=>{ if(!localStorage.getItem(TRIAL_KEY)) localStorage.setItem(TRIAL_KEY, Date.now().toString()); hidePaywall(); });
 $('#btn-month')?.addEventListener('click', ()=>window.open('https://example.com/monthly','_blank'));
 $('#btn-year') ?.addEventListener('click', ()=>window.open('https://example.com/yearly','_blank'));
 $('#btn-life') ?.addEventListener('click', ()=>window.open('https://example.com/lifetime','_blank'));
-$('#btn-restore')?.addEventListener('click', ()=>{
-  const key = prompt('Paste your license / token:'); if (key){ localStorage.setItem(PRO_KEY, key); hidePaywall(); }
-});
+$('#btn-restore')?.addEventListener('click', ()=>{ const key=prompt('Paste your license / token:'); if(key){ localStorage.setItem(PRO_KEY,key); hidePaywall(); }});
 
-/* ========= landing → studio (fade & hide, gate on trial) ========= */
+/* ========= landing → studio ========= */
 $('#openStudio').addEventListener('click', async ()=>{
   if (!(await ensureEntitled())) return;
-  const landing = $('#landing');
-  const studio  = $('#studio');
-  studio.hidden = false;
-  try { await init(); } catch(_) {}
+  const landing=$('#landing'), studio=$('#studio');
+  studio.hidden=false;
+  try{ await init(); }catch(_){}
   landing.classList.add('is-hiding');
-  landing.addEventListener('transitionend', ()=> landing.hidden = true, { once:true });
-  try { studio.scrollIntoView({ behavior:'smooth', block:'start' }); } catch(_) {}
+  landing.addEventListener('transitionend', ()=> landing.hidden=true, {once:true});
+  try{ studio.scrollIntoView({behavior:'smooth', block:'start'}); }catch(_){}
 });
 
 /* ========= camera & devices ========= */
 const TARGET=[60,30,10], K=3, DOWNSCALE_W=160, EMA=0.35;
-const v = $('#v'), cv = $('#c'), bars = $('#bars');
-const legend = $('#legend'), actualEl = $('#actual'), scoreEl = $('#score');
-const devSel = $('#device'), inclNeutrals = $('#inclNeutrals'), errEl = $('#err');
+const v=$('#v'), cv=$('#c'), bars=$('#bars');
+const legend=$('#legend'), actualEl=$('#actual'), scoreEl=$('#score');
+const devSel=$('#device'), inclNeutrals=$('#inclNeutrals'), errEl=$('#err');
 $('#kval').textContent=K;
 let emaPct=null;
 
@@ -469,8 +391,8 @@ async function start(deviceId){
   }catch(e){ uiError('Failed to start camera: '+e.message); throw e; }
 }
 async function init(){
-  const isLoopback = /^(localhost|127\.0\.0\.1|::1|\[::1\])$/.test(location.hostname);
-  const allowed = window.isSecureContext || (location.protocol==='http:' && isLoopback);
+  const isLoopback=/^(localhost|127\.0\.0\.1|::1|\[::1\])$/.test(location.hostname);
+  const allowed=window.isSecureContext || (location.protocol==='http:' && isLoopback);
   if(!allowed){ uiError('Camera requires HTTPS or http://localhost'); return; }
   try{ const s=await navigator.mediaDevices.getUserMedia({video:true,audio:false}); s.getTracks().forEach(t=>t.stop()); }
   catch(e){ uiError('Permission/availability error: '+e.message); return; }
@@ -485,8 +407,7 @@ navigator.mediaDevices?.addEventListener?.('devicechange', listDevices);
 function rgb2hsv(r,g,b){
   r/=255; g/=255; b/=255;
   const max=Math.max(r,g,b), min=Math.min(r,g,b);
-  let h=0, s, v=max;
-  const d=max-min;
+  let h=0, s, v=max, d=max-min;
   s = max===0 ? 0 : d/max;
   if (max!==min){
     switch (max){
@@ -498,32 +419,27 @@ function rgb2hsv(r,g,b){
   }
   return [h,s,v];
 }
-
 function kmeans(pixels, k=3, maxIter=8){
   const n = pixels.length / 3;
-
-  /* farthest-first seeding */
   const centers = new Array(k).fill(0).map(()=>[0,0,0]);
   const first = Math.floor(Math.random()*n);
   centers[0] = [pixels[first*3], pixels[first*3+1], pixels[first*3+2]];
   for (let ci=1; ci<k; ci++){
-    let farIdx = 0, farDist = -1;
+    let farIdx=0, farDist=-1;
     for (let i=0; i<n; i++){
       const r=pixels[i*3], g=pixels[i*3+1], b=pixels[i*3+2];
-      let dmin = Infinity;
+      let dmin=Infinity;
       for (let j=0; j<ci; j++){
         const dr=r-centers[j][0], dg=g-centers[j][1], db=b-centers[j][2];
         const d=dr*dr+dg*dg+db*db;
-        if (d<dmin) dmin = d;
+        if (d<dmin) dmin=d;
       }
-      if (dmin > farDist){ farDist = dmin; farIdx = i; }
+      if (dmin>farDist){ farDist=dmin; farIdx=i; }
     }
     centers[ci] = [pixels[farIdx*3], pixels[farIdx*3+1], pixels[farIdx*3+2]];
   }
-
-  const assign = new Int16Array(n);
+  const assign=new Int16Array(n);
   for (let it=0; it<maxIter; it++){
-    // assign
     for (let i=0; i<n; i++){
       const r=pixels[i*3], g=pixels[i*3+1], b=pixels[i*3+2];
       let best=-1, bd=Infinity;
@@ -532,10 +448,9 @@ function kmeans(pixels, k=3, maxIter=8){
         const d=dr*dr+dg*dg+db*db;
         if (d<bd){ bd=d; best=j; }
       }
-      assign[i] = best;
+      assign[i]=best;
     }
-    // update
-    const sum = centers.map(()=>[0,0,0,0]);
+    const sum=centers.map(()=>[0,0,0,0]);
     for (let i=0; i<n; i++){
       const a=assign[i], off=i*3;
       sum[a][0]+=pixels[off]; sum[a][1]+=pixels[off+1]; sum[a][2]+=pixels[off+2]; sum[a][3]++;
@@ -548,12 +463,10 @@ function kmeans(pixels, k=3, maxIter=8){
       }
     }
   }
-
-  const counts = new Array(k).fill(0);
+  const counts=new Array(k).fill(0);
   for (let i=0; i<n; i++) counts[assign[i]]++;
   return { centers, counts };
 }
-
 function grade6010(pcts){
   const a=[...pcts].sort((x,y)=>y-x).slice(0,3);
   const diffs=a.map((v,i)=>Math.abs(v-[60,30,10][i]));
@@ -565,12 +478,11 @@ function grade6010(pcts){
 }
 
 /* ========= ghost / wipe overlay ========= */
-const gcv = $('#ghost'); const gctx = gcv.getContext('2d', { willReadFrequently:true });
-const refUpload = $('#refUpload'); const grabRefBtn = $('#grabRef'); const overlayMode = $('#overlayMode');
-const alpha = $('#alpha'); const scale = $('#scale'); const offx = $('#offx'); const offy = $('#offy');
-const flip = $('#flip'); const grid = $('#grid'); const wipe = $('#wipe'); const wipeWrap = $('#wipeWrap');
+const gcv=$('#ghost'); const gctx=gcv.getContext('2d',{willReadFrequently:true});
+const refUpload=$('#refUpload'); const grabRefBtn=$('#grabRef'); const overlayMode=$('#overlayMode');
+const alpha=$('#alpha'); const scale=$('#scale'); const offx=$('#offx'); const offy=$('#offy');
+const flip=$('#flip'); const grid=$('#grid'); const wipe=$('#wipe'); const wipeWrap=$('#wipeWrap');
 let refImg=null;
-
 refUpload.addEventListener('change', e=>{
   const f=e.target.files?.[0]; if(!f) return;
   const url=URL.createObjectURL(f); const img=new Image();
@@ -587,18 +499,18 @@ overlayMode.addEventListener('change', ()=>{ wipeWrap.style.display = overlayMod
 function drawGrid(ctx,W,H){
   ctx.save();
   ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=1;
-  ctx.beginPath(); /* thirds */
+  ctx.beginPath();
   ctx.moveTo(W/3,0); ctx.lineTo(W/3,H);
   ctx.moveTo(2*W/3,0); ctx.lineTo(2*W/3,H);
   ctx.moveTo(0,H/3); ctx.lineTo(W,H/3);
   ctx.moveTo(0,2*H/3); ctx.lineTo(W,2*H/3);
   ctx.stroke();
-  ctx.strokeStyle='rgba(255,255,255,0.25)'; /* center */
+  ctx.strokeStyle='rgba(255,255,255,0.25)';
   ctx.beginPath(); ctx.moveTo(W/2,0); ctx.lineTo(W/2,H); ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke();
   ctx.restore();
 }
 function drawGhost(){
-  const W = gcv.width = v.clientWidth || v.videoWidth;
+  const W = gcv.width  = v.clientWidth || v.videoWidth;
   const H = gcv.height = v.clientHeight || (v.videoHeight * (W/(v.videoWidth||W))|0);
   const ctx=gctx; ctx.clearRect(0,0,W,H);
 
@@ -635,13 +547,13 @@ window.addEventListener('keydown', (e)=>{
 });
 
 /* ========= Golden HUD ========= */
-const phiOn = $('#phiOn'); const phiSpiralSel = $('#phiSpiral'); const phiQ = $('#phiQ'); const phiScoreEl = $('#phiScore');
+const phiOn=$('#phiOn'); const phiSpiralSel=$('#phiSpiral'); const phiQ=$('#phiQ'); const phiScoreEl=$('#phiScore');
 function getFrameRect(){
-  const W=gcv.width,H=gcv.height, vAR=(v.videoWidth||0)/(v.videoHeight||1);
+  const W=gcv.width, H=gcv.height, vAR=(v.videoWidth||0)/(v.videoHeight||1);
   if(!isFinite(vAR)||vAR<=0) return {x:0,y:0,w:W,h:H};
   const boxAR=W/H;
   if(boxAR>vAR){ const w=H*vAR, x=(W-w)/2; return {x, y:0, w, h:H}; }
-  else{ const h=W/vAR, y=(H-h)/2; return {x:0, y, w:W, h}; }
+  else         { const h=W/vAR, y=(H-h)/2; return {x:0, y, w:W, h}; }
 }
 function drawPhiGrid(ctx,rect){
   const {x,y,w,h}=rect, phi=1.61803398875;
@@ -694,7 +606,7 @@ function saliencyFromImageData(imgData,w,h){
   const dmin=Math.sqrt(bestD), diag=Math.hypot(w,h), score=Math.max(0,Math.min(100,Math.round(100*(1-dmin/(0.15*diag)))));
   return { cx, cy, score, bestCorner:['tl','bl','tr','br'][bestIdx] };
 }
-function drawPhiMarker(ctx, cx,cy){
+function drawPhiMarker(ctx,cx,cy){
   ctx.save(); ctx.fillStyle='rgba(0,255,180,0.9)'; ctx.strokeStyle='rgba(0,0,0,0.6)'; ctx.lineWidth=2;
   ctx.beginPath(); ctx.arc(cx,cy,6,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
 }
@@ -711,12 +623,11 @@ function loop(){
   const scaleX = DOWNSCALE_W / v.videoWidth;
   const w = DOWNSCALE_W, h = Math.round(v.videoHeight * scaleX);
   cv.width = w; cv.height = h;
-  const ctx = cv.getContext('2d', { willReadFrequently:true });
+  const ctx = cv.getContext('2d',{willReadFrequently:true});
   ctx.drawImage(v, 0, 0, w, h);
   const imgData = ctx.getImageData(0,0,w,h);
   const data = imgData.data;
 
-  /* color clusters */
   let r=0,g=0,b=0,cnt=0; for(let i=0;i<data.length;i+=32){ r+=data[i]; g+=data[i+1]; b+=data[i+2]; cnt++; }
   const mean=[r/cnt,g/cnt,b/cnt]; if (sceneCut(mean)) emaPct=null;
 
@@ -738,26 +649,17 @@ function loop(){
 
   sorted.forEach((s, i)=>{ 
     const pct = s.pct * 100 / totPct;
-    const div=document.createElement('div'); 
-    div.className='bar';
-    
-    const fill=document.createElement('div'); 
-    fill.className='fill'; 
-    fill.style.width=`${pct.toFixed(2)}%`; 
+    const div=document.createElement('div'); div.className='bar';
+    const fill=document.createElement('div'); fill.className='fill';
+    fill.style.width=`${pct.toFixed(2)}%`;
     fill.style.background=`rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})`;
-    
-    const label=document.createElement('span'); 
-    const hex = '#'+s.rgb.map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+    const label=document.createElement('span');
+    const hex='#'+s.rgb.map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
     label.textContent = `${pct.toFixed(1)}%  ${hex}`;
 
-    /* target tick at 60 / 30 / 10 on bars 0 / 1 / 2 */
-    const tick = document.createElement('i');
-    tick.className = 'target';
-    tick.style.left = `${TARGET[i]}%`;
+    const tick=document.createElement('i'); tick.className='target'; tick.style.left=`${TARGET[i]}%`;
 
-    div.appendChild(fill);
-    div.appendChild(label);
-    div.appendChild(tick);
+    div.appendChild(fill); div.appendChild(label); div.appendChild(tick);
     bars.appendChild(div);
 
     const swEl=document.createElement('span'); swEl.className='swatch';
@@ -769,7 +671,6 @@ function loop(){
   actualEl.textContent = `${actual[0]} / ${actual[1]} / ${actual[2]}`;
   scoreEl.textContent = score; scoreEl.className = `tag ${tag}`;
 
-  /* Golden HUD (off by default; spiral off by default) */
   if (phiOn.checked){
     const rect=getFrameRect();
     drawPhiGrid(gctx, rect);
@@ -777,12 +678,10 @@ function loop(){
     const sx = rect.x + (cx / w) * rect.w;
     const sy = rect.y + (cy / h) * rect.h;
     drawPhiMarker(gctx, sx, sy);
-
     const mode = phiSpiralSel.value;
     const fit  = $('#phiFit').value;
     const spiralCorner = mode==='auto' ? (bestCorner || 'tr') : mode;
     if (mode!=='off') drawPhiSpiral(gctx, rect, spiralCorner, fit);
-
     phiScoreEl.textContent = phiScore;
     phiScoreEl.className = 'tag ' + (phiScore>=85?'pass': phiScore<60?'fail':'warn');
   } else {
@@ -796,7 +695,7 @@ function loop(){
 }
 v.addEventListener('loadeddata', loop);
 
-/* ========= defaults (force off for grid/spiral/hud) ========= */
+/* ========= defaults ========= */
 window.addEventListener('DOMContentLoaded', ()=>{
   $('#grid').checked = false;
   $('#phiOn').checked = false;

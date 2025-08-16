@@ -16,6 +16,18 @@
     --ui-surface:rgba(255,255,255,0.05);
     --ui-ring:rgba(245,158,11,0.55);
   }
+/* Target ticks on the bars (60 / 30 / 10) */
+.bar .target{
+  position:absolute;
+  top:3px; bottom:3px;       /* short vertical line */
+  width:3px;
+  background:var(--ui-accent);
+  border-radius:2px;
+  box-shadow:0 0 0 1px rgba(0,0,0,.35), 0 0 6px rgba(0,0,0,.25);
+  transform:translateX(-50%); /* center on its x position */
+  pointer-events:none;
+}
+
   /* optional themes */
   body.theme-magenta-cosmos{
     --ui-primary:#0B0511; --ui-secondary:#1A0B2E; --ui-accent:#FF2E88;

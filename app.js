@@ -1,23 +1,47 @@
 /* =========================
    Config
 ========================= */
-const ENABLE_PAYWALL = false;   // set true if you actually want to gate
-const TRIAL_DAYS = 3;
-const TRIAL_KEY  = 'trialStartedAt_v1';
-const PRO_KEY    = 'proEntitlement_v1';
-const LAST_DEVICE_KEY = 'lastVideoDeviceId_v1';
+const ENABLE_PAYWALL = true;            // set true to actually show the paywall
+const TRIAL_DAYS     = 3;
+const TRIAL_KEY      = 'trialStartedAt_v1';
+const PRO_KEY        = 'proEntitlement_v1';
+const LAST_DEVICE_KEY= 'lastVideoDeviceId_v1';
+const THEME_KEY      = 'derivedTheme_v1';
 
 /* =========================
    Tiny helpers
 ========================= */
 const $ = (sel) => document.querySelector(sel);
+
 function updRange(el){
   const min = +el.min || 0, max = +el.max || 100, val = +el.value || 0;
   const pct = ((val - min) / (max - min)) * 100;
   el.style.setProperty('--pct', pct + '%');
 }
 
-/* ===== audio cue when score hits 100 ===== */
+function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+function rgb2hsv(r,g,b){
+  r/=255; g/=255; b/=255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b);
+  let h=0, s, v=max, d=max-min;
+  s = max===0 ? 0 : d/max;
+  if (max!==min){
+    switch (max){
+      case r: h=(g-b)/d + (g<b ? 6 : 0); break;
+      case g: h=(b-r)/d + 2;            break;
+      case b: h=(r-g)/d + 4;            break;
+    }
+    h/=6;
+  }
+  return [h,s,v];
+}
+function rgbHex([r,g,b]){
+  return '#'+[r,g,b].map(v=>Math.round(v).toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+
+/* =========================
+   Audio cue (score==100)
+========================= */
 let audioCtx;
 function ensureAudio(){
   try{
@@ -26,84 +50,228 @@ function ensureAudio(){
   }catch(_){ /* ignore */ }
 }
 function playChime(){
-  ensureAudio();
-  if (!audioCtx) return;
-  const now = audioCtx.currentTime;
-  const o = audioCtx.createOscillator();
-  const g = audioCtx.createGain();
-  o.type = 'sine';
-  o.frequency.setValueAtTime(880, now);          // A5
-  g.gain.setValueAtTime(0.0001, now);
-  g.gain.exponentialRampToValueAtTime(0.2, now + 0.01);
-  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
-  o.connect(g).connect(audioCtx.destination);
-  o.start(now);
-  o.stop(now + 0.2);
+  try{
+    ensureAudio();
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(880, now); // A5
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.2, now + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(now); o.stop(now + 0.2);
+  }catch(_){}
 }
 
 /* =========================
-   Global UI state for score updates
-   (single source of truth — no duplicates)
+   THEME: load / save / derive
 ========================= */
-let scoreUpdateMode   = localStorage.getItem('scoreUpdateMode') || 'frame'; // 'frame' | 'second'
-let lastScoreUpdateTs = 0;   // ms (performance.now())
-let prevScoreInt      = null; // last displayed score int (for chime)
+function applyThemeVars(theme){
+  const root = document.documentElement;
+  root.style.setProperty('--ui-primary',   theme.primary);
+  root.style.setProperty('--ui-secondary', theme.secondary);
+  root.style.setProperty('--ui-accent',    theme.accent);
+  root.style.setProperty('--ui-text',      theme.text || '#EDEFF2');
+  root.style.setProperty('--ui-text-muted',theme.textMuted || '#B8C2D6');
+  root.style.setProperty('--ui-border',    theme.border || 'rgba(255,255,255,0.10)');
+  root.style.setProperty('--ui-surface',   theme.surface || 'rgba(255,255,255,0.06)');
+
+  // ring based on accent with alpha
+  try{
+    const a = theme.accent.startsWith('#')
+      ? theme.accent.match(/[0-9a-f]{2}/gi).map(h=>parseInt(h,16))
+      : null;
+    const ring = a ? `rgba(${a[0]},${a[1]},${a[2]},0.55)` : 'rgba(245,158,11,0.55)';
+    root.style.setProperty('--ui-ring', ring);
+  }catch(_){}
+}
+function restoreSavedThemeIfAny(){
+  try{
+    const raw = localStorage.getItem(THEME_KEY);
+    if (!raw) return false;
+    const theme = JSON.parse(raw);
+    if (theme && theme.primary && theme.secondary && theme.accent){
+      applyThemeVars(theme);
+      return true;
+    }
+  }catch(_){}
+  return false;
+}
+function saveTheme(theme){
+  try{ localStorage.setItem(THEME_KEY, JSON.stringify(theme)); }catch(_){}
+}
+
+// robust hero URL sniffing
+function getHeroImageURL(){
+  const bg   = document.querySelector('#landing .bg');
+  const card = document.querySelector('#landing .card');
+  if (!bg) return null;
+
+  // CSS var --hero is the most reliable
+  const varVal =
+    getComputedStyle(bg).getPropertyValue('--hero').trim() ||
+    (card ? getComputedStyle(card).getPropertyValue('--hero').trim() : '');
+  const fromVar = varVal && varVal.match(/url\((.*)\)/i);
+  if (fromVar) return new URL(fromVar[1].replace(/^["']|["']$/g,''), location.href).href;
+
+  // fallback to background-image
+  const bi = getComputedStyle(bg).backgroundImage;
+  const m  = bi && bi.match(/url\((.*)\)/i);
+  if (m) return new URL(m[1].replace(/^["']|["']$/g,''), location.href).href;
+
+  return null;
+}
+
+// simple k-means (reused later too)
+function kmeans(pixels, k=3, maxIter=8){
+  const n = pixels.length / 3;
+  const centers = new Array(k).fill(0).map(()=>[0,0,0]);
+  const first = Math.floor(Math.random()*n);
+  centers[0] = [pixels[first*3], pixels[first*3+1], pixels[first*3+2]];
+  for (let ci=1; ci<k; ci++){
+    let farIdx=0, farDist=-1;
+    for (let i=0; i<n; i++){
+      const r=pixels[i*3], g=pixels[i*3+1], b=pixels[i*3+2];
+      let dmin=Infinity;
+      for (let j=0; j<ci; j++){
+        const dr=r-centers[j][0], dg=g-centers[j][1], db=b-centers[j][2];
+        const d=dr*dr+dg*dg+db*db; if (d<dmin) dmin=d;
+      }
+      if (dmin>farDist){ farDist=dmin; farIdx=i; }
+    }
+    centers[ci] = [pixels[farIdx*3], pixels[farIdx*3+1], pixels[farIdx*3+2]];
+  }
+  const assign=new Int16Array(n);
+  for (let it=0; it<maxIter; it++){
+    for (let i=0; i<n; i++){
+      const r=pixels[i*3], g=pixels[i*3+1], b=pixels[i*3+2];
+      let best=-1, bd=Infinity;
+      for (let j=0; j<k; j++){
+        const dr=r-centers[j][0], dg=g-centers[j][1], db=b-centers[j][2];
+        const d=dr*dr+dg*dg+db*db; if (d<bd){ bd=d; best=j; }
+      }
+      assign[i]=best;
+    }
+    const sum=centers.map(()=>[0,0,0,0]);
+    for (let i=0; i<n; i++){
+      const a=assign[i], off=i*3;
+      sum[a][0]+=pixels[off]; sum[a][1]+=pixels[off+1]; sum[a][2]+=pixels[off+2]; sum[a][3]++;
+    }
+    for (let j=0; j<k; j++){
+      if (sum[j][3]>0){
+        centers[j][0]=sum[j][0]/sum[j][3];
+        centers[j][1]=sum[j][1]/sum[j][3];
+        centers[j][2]=sum[j][2]/sum[j][3];
+      }
+    }
+  }
+  const counts=new Array(k).fill(0);
+  for (let i=0; i<n; i++) counts[assign[i]]++;
+  return { centers, counts };
+}
+
+// derive palette from image
+async function deriveThemeFromImageUrl(url){
+  const img = new Image();
+  img.crossOrigin = 'anonymous'; // ok for same-origin; helps if CORS enabled
+  await new Promise((res, rej)=>{
+    img.onload = res;
+    img.onerror = ()=>rej(new Error('Image load failed'));
+    img.src = url;
+  });
+
+  const W = 128, H = Math.max(64, Math.round((img.naturalHeight||img.height) * (W/(img.naturalWidth||img.width))));
+  const c = document.createElement('canvas'); c.width=W; c.height=H;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0, W, H);
+
+  let data;
+  try{ data = ctx.getImageData(0,0,W,H).data; }
+  catch(e){ throw new Error('Canvas tainted; cannot sample colors.'); }
+
+  // build sample buffer (skip transparent/very dark borders)
+  const buf=[];
+  for (let i=0; i<data.length; i+=16){
+    const a=data[i+3];
+    if (a<200) continue;
+    const r=data[i], g=data[i+1], b=data[i+2];
+    buf.push(r,g,b);
+  }
+  if (!buf.length) return;
+
+  const { centers, counts } = kmeans(new Float32Array(buf), 4, 8);
+  const swatches = counts.map((c,i)=>{
+    const rgb = centers[i].map(x=>Math.max(0,Math.min(255,Math.round(x))));
+    const [h,s,v] = rgb2hsv(rgb[0],rgb[1],rgb[2]);
+    const lum = 0.2126*rgb[0] + 0.7152*rgb[1] + 0.0722*rgb[2];
+    return { rgb, count:c, sat:s, val:v, lum };
+  }).sort((a,b)=>b.count-a.count);
+
+  // choose roles
+  const primary   = swatches.slice().sort((a,b)=>a.lum-b.lum)[0]        || swatches[0];
+  const accent    = swatches.slice().sort((a,b)=>(b.sat*b.val)-(a.sat*a.val))[0] || swatches[0];
+  // secondary: mid-luma color not too close to primary
+  const secPool   = swatches.slice().sort((a,b)=>Math.abs((a.lum)-(b.lum)) - Math.abs((a.lum)-(primary.lum)));
+  const secondary = secPool.find(s=>Math.abs(s.lum-primary.lum)>20) || swatches[1] || swatches[0];
+
+  const theme = {
+    primary:   rgbHex(primary.rgb),
+    secondary: rgbHex(secondary.rgb),
+    accent:    rgbHex(accent.rgb),
+    text:      '#EDEFF2',
+    textMuted: '#B8C2D6',
+    border:    'rgba(255,255,255,0.10)',
+    surface:   'rgba(255,255,255,0.06)',
+  };
+  applyThemeVars(theme);
+  saveTheme(theme);
+}
+
+// wrapper you can call any time
+async function deriveThemeFromHeroNow(){
+  const url = getHeroImageURL();
+  if (!url){ console.warn('No hero image URL found'); return; }
+  try { await deriveThemeFromImageUrl(url); }
+  catch(e){ console.warn('Theme derive failed:', e.message||e); }
+}
 
 /* =========================
    Landing → Studio
 ========================= */
 document.addEventListener('DOMContentLoaded', () => {
-   // Apply previous theme if saved; otherwise auto-derive from landing image once
-if (!restoreSavedThemeIfAny()) {
-  tryAutoDeriveFromHero();
-}
-
-// Manual re-derive button
-document.getElementById('matchTheme')?.addEventListener('click', () => {
-  tryAutoDeriveFromHero();
-});
-
-  // Lock scroll on landing
+  // lock scroll on landing
   document.body.classList.add('lock');
 
-  // Beauty: sync range rails
-  document.querySelectorAll('input[type="range"]').forEach(el => {
+  // range rails sync
+  document.querySelectorAll('input[type="range"]').forEach(el=>{
     updRange(el);
-    el.addEventListener('input', () => updRange(el));
+    el.addEventListener('input', ()=>updRange(el));
   });
 
-  // Default states off
+  // Defaults
   $('#grid').checked = false;
   $('#phiOn').checked = false;
   $('#phiSpiral').value = 'off';
 
-  // Score update select wiring (lives once, here)
-  const scoreUpdateSel = document.getElementById('scoreUpdate');
-  if (scoreUpdateSel) {
-    scoreUpdateSel.value = scoreUpdateMode;
-    scoreUpdateSel.addEventListener('change', (e) => {
-      scoreUpdateMode = e.target.value;                 // 'frame' | 'second'
-      localStorage.setItem('scoreUpdateMode', scoreUpdateMode);
-      lastScoreUpdateTs = 0;                            // force immediate refresh
-    });
-  }
-
   // Open Studio
-  $('#openStudio')?.addEventListener('click', async () => {
+  $('#openStudio')?.addEventListener('click', async ()=>{
     ensureAudio();
     if (!(await ensureEntitled())) return;
     showStudio();
   });
 
-  // Also expose Start Camera
-  $('#startBtn')?.addEventListener('click', () => {
+  // Start camera button (toolbar)
+  $('#startBtn')?.addEventListener('click', ()=>{
     ensureAudio();
     init();
   });
 
   // overlay mode → show/hide wipe slider
-  $('#overlayMode')?.addEventListener('change', () => {
-    $('#wipeWrap').style.display = $('#overlayMode').value === 'wipe' ? 'inline-block' : 'none';
+  $('#overlayMode')?.addEventListener('change', ()=>{
+    $('#wipeWrap').style.display = $('#overlayMode').value==='wipe' ? 'inline-block' : 'none';
   });
 
   // Capture
@@ -115,7 +283,17 @@ document.getElementById('matchTheme')?.addEventListener('click', () => {
 
   // Device changes
   navigator.mediaDevices?.addEventListener?.('devicechange', listDevices);
+
+  // Score update mode (per frame/per second)
+  initScoreUpdateMode();
 });
+
+// After everything (images/styles) finishes loading, derive theme once if none saved
+window.addEventListener('load', ()=>{
+  if (!restoreSavedThemeIfAny()){
+    deriveThemeFromHeroNow();
+  }
+}, { once:true });
 
 /* Show studio and hide landing with fade */
 function showStudio(){
@@ -123,12 +301,10 @@ function showStudio(){
   const studio  = $('#studio');
   document.body.classList.remove('lock'); // allow scroll in studio
   studio.hidden = false;
-  // kick camera init attempt (safe even if permissions blocked)
   init().catch(()=>{});
-  // animate away landing
   landing.classList.add('is-hiding');
-  landing.addEventListener('transitionend', () => { landing.hidden = true; }, { once:true });
-  try { studio.scrollIntoView({ behavior:'smooth', block:'start' }); } catch(_) {}
+  landing.addEventListener('transitionend', ()=>{ landing.hidden = true; }, { once:true });
+  try{ studio.scrollIntoView({behavior:'smooth', block:'start'}); }catch(_){}
 }
 
 /* =========================
@@ -140,56 +316,55 @@ function getMsLeft(){
   return (started + TRIAL_DAYS*86400000) - Date.now();
 }
 function fmtCountdown(ms){
-  if (ms <= 0) return 'trial ended';
-  const d = Math.floor(ms/86400000);
-  const h = Math.floor(ms%86400000/3600000);
-  const m = Math.floor(ms%3600000/60000);
+  if (ms<=0) return 'trial ended';
+  const d=Math.floor(ms/86400000), h=Math.floor(ms%86400000/3600000), m=Math.floor(ms%3600000/60000);
   return `${d}d ${h}h ${m}m left`;
 }
 function hasPro(){ return !!localStorage.getItem(PRO_KEY); }
 function showPaywall(msg){
-  const pw = $('#paywall'), msgEl = $('#pw-msg'), cdEl = $('#pw-countdown');
+  const pw=$('#paywall'), msgEl=$('#pw-msg'), cdEl=$('#pw-countdown');
   msgEl.firstChild.nodeValue = (msg || 'You’re on a free 3-day trial. ');
-  const upd = ()=>{ const ms=getMsLeft(); cdEl.textContent = ms>0 ? fmtCountdown(ms) : 'trial ended'; };
-  upd(); clearInterval(showPaywall._t); showPaywall._t = setInterval(upd, 15000);
-  pw.hidden = false;
+  const upd=()=>{ const ms=getMsLeft(); cdEl.textContent = ms>0 ? fmtCountdown(ms) : 'trial ended'; };
+  upd(); clearInterval(showPaywall._t); showPaywall._t=setInterval(upd,15000);
+  pw.hidden=false;
 }
-function hidePaywall(){ const pw=$('#paywall'); pw.hidden=true; if (showPaywall._t) clearInterval(showPaywall._t); }
+function hidePaywall(){ const pw=$('#paywall'); pw.hidden=true; if(showPaywall._t) clearInterval(showPaywall._t); }
 async function ensureEntitled(){
   if (!ENABLE_PAYWALL) return true;
   if (hasPro()) return true;
-  const ms = getMsLeft();
-  if (ms === -1){ showPaywall('Start your free 3-day trial. '); return false; }
-  if (ms > 0){ hidePaywall(); return true; }
+  const ms=getMsLeft();
+  if (ms===-1){ showPaywall('Start your free 3-day trial. '); return false; }
+  if (ms>0){ hidePaywall(); return true; }
   showPaywall('Your trial ended. '); return false;
 }
 $('#btn-start-trial')?.addEventListener('click', ()=>{
-  if (!localStorage.getItem(TRIAL_KEY)) localStorage.setItem(TRIAL_KEY, Date.now().toString());
+  if(!localStorage.getItem(TRIAL_KEY)) localStorage.setItem(TRIAL_KEY, Date.now().toString());
   hidePaywall();
 });
 $('#btn-month')?.addEventListener('click', ()=>window.open('https://example.com/monthly','_blank'));
 $('#btn-year') ?.addEventListener('click', ()=>window.open('https://example.com/yearly','_blank'));
 $('#btn-life') ?.addEventListener('click', ()=>window.open('https://example.com/lifetime','_blank'));
 $('#btn-restore')?.addEventListener('click', ()=>{
-  const key = prompt('Paste your license / token:'); if (key){ localStorage.setItem(PRO_KEY, key); hidePaywall(); }
+  const key=prompt('Paste your license / token:'); if(key){ localStorage.setItem(PRO_KEY,key); hidePaywall(); }
 });
 
 /* =========================
    Camera & devices
 ========================= */
-const TARGET=[60,30,10],K=3,DOWNSCALE_W=160,EMA=0.35; $('#kval').textContent=K;
-const v = $('#v'), cv = $('#c'), bars = $('#bars');
-const legend = $('#legend'), actualEl = $('#actual'), scoreEl = $('#score');
-const devSel = $('#device'), inclNeutrals = $('#inclNeutrals'), errEl = $('#err');
-let emaPct=null;
-let stream=null;
+const TARGET=[60,30,10], K=3, DOWNSCALE_W=160, EMA=0.35;
+$('#kval') && ($('#kval').textContent=K);
+
+const v=$('#v'), cv=$('#c'), bars=$('#bars');
+const legend=$('#legend'), actualEl=$('#actual'), scoreEl=$('#score');
+const devSel=$('#device'), inclNeutrals=$('#inclNeutrals'), errEl=$('#err');
+let emaPct=null, stream=null;
 
 function uiError(msg){ errEl.textContent = msg||''; if(msg) console.warn(msg); }
 
 /* Smart default: try last used device, else back camera on phones, else any camera */
 async function init(){
   try{
-    await ensurePermissionPriming();  // gets labels on Safari/Chrome
+    await ensurePermissionPriming();
     await listDevices();
 
     const lastId = localStorage.getItem(LAST_DEVICE_KEY);
@@ -197,19 +372,18 @@ async function init(){
     let chosenId = devSel.value;
 
     if (lastId && [...devSel.options].some(o=>o.value===lastId)){
-      chosenId = lastId;
-      devSel.value = lastId;
+      chosenId = lastId; devSel.value = lastId;
     } else if (mobile){
-      // prefer "back" camera labels if present
       const backOpt = [...devSel.options].find(o=>/back|rear|environment/i.test(o.textContent));
-      if (backOpt) { chosenId = backOpt.value; devSel.value = backOpt.value; }
+      if (backOpt){ chosenId = backOpt.value; devSel.value = backOpt.value; }
     }
 
     if (chosenId){
       await start({ deviceId: { exact: chosenId } });
     } else if (mobile){
-      // facingMode environment fallback
-      await start({ facingMode: { exact:'environment' } }).catch(()=>start({ facingMode:'environment' }).catch(()=>start(true)));
+      await start({ facingMode: { exact:'environment' } })
+        .catch(()=>start({ facingMode:'environment' })
+        .catch(()=>start(true)));
     } else {
       await start(true);
     }
@@ -217,49 +391,45 @@ async function init(){
     uiError('Permission/availability error: '+(e.message||e));
   }
 }
-
-/* Do a tiny one-shot getUserMedia call to populate device labels */
 async function ensurePermissionPriming(){
-  const labelsKnown = (await navigator.mediaDevices.enumerateDevices()).some(d=>d.kind==='videoinput' && d.label);
+  const labelsKnown = (await navigator.mediaDevices.enumerateDevices())
+    .some(d=>d.kind==='videoinput' && d.label);
   if (labelsKnown) return;
   try{
     const s = await navigator.mediaDevices.getUserMedia({video:true, audio:false});
     s.getTracks().forEach(t=>t.stop());
-  }catch(e){
-    // not fatal; user can press Start later
-  }
+  }catch(_){}
 }
-
 async function listDevices(){
   const devs=await navigator.mediaDevices.enumerateDevices();
   const vids=devs.filter(d=>d.kind==='videoinput');
   devSel.innerHTML = vids.map(d=>`<option value="${d.deviceId}">${d.label||'Camera'}</option>`).join('');
   if(!vids.length) uiError('No cameras found. Start DroidCam/OBS or plug capture in.');
 }
-
 async function start(videoConstraints){
   try{
-    // stop previous
     if (stream){ stream.getTracks().forEach(t=>t.stop()); }
-    const constraints = (videoConstraints===true) ? { video:true, audio:false } : { video: videoConstraints, audio:false };
+    const constraints = (videoConstraints===true)
+      ? { video:true, audio:false }
+      : { video: videoConstraints, audio:false };
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     v.srcObject = stream; uiError('');
 
-    // remember selection
     try{
       const settings = stream.getVideoTracks()[0]?.getSettings?.();
-      if (settings?.deviceId) { localStorage.setItem(LAST_DEVICE_KEY, settings.deviceId); devSel.value = settings.deviceId; }
+      if (settings?.deviceId){
+        localStorage.setItem(LAST_DEVICE_KEY, settings.deviceId);
+        devSel.value = settings.deviceId;
+      }
     }catch(_){}
-
-    // loop will start on 'loadeddata'
+    // loop starts on 'loadeddata'
   }catch(e){
     uiError('Failed to start camera: '+e.message);
     throw e;
   }
 }
 devSel?.addEventListener('change', async ()=>{
-  const id = devSel.value;
-  if (!id) return;
+  const id = devSel.value; if (!id) return;
   localStorage.setItem(LAST_DEVICE_KEY, id);
   await start({ deviceId: { exact: id } }).catch(async (e)=>{
     console.warn('Exact device failed, fallback', e);
@@ -276,21 +446,19 @@ async function captureFrameToBlob(includeOverlay = true){
   const H = gcv.height || v.clientHeight || v.videoHeight || 720;
 
   const oc = document.createElement('canvas');
-  oc.width = W; oc.height = H;
+  oc.width=W; oc.height=H;
   const octx = oc.getContext('2d');
 
   octx.fillStyle = '#000';
-  octx.fillRect(0, 0, W, H);
+  octx.fillRect(0,0,W,H);
 
   const rect = getFrameRect();
   try{ octx.drawImage(v, rect.x, rect.y, rect.w, rect.h); }catch(_){}
-
   if (includeOverlay && gcv) octx.drawImage(gcv, 0, 0, W, H);
 
   const blob = await new Promise(res => oc.toBlob(res, 'image/jpeg', 0.92));
   return blob;
 }
-
 async function saveCapture(){
   try{
     await new Promise(r => requestAnimationFrame(r));
@@ -301,20 +469,16 @@ async function saveCapture(){
     const file = new File([blob], filename, { type: 'image/jpeg' });
 
     if (navigator.canShare?.({ files:[file] })) {
-      await navigator.share({ files: [file], title: '60/30/10 capture', text: 'Captured with 60/30/10 Studio' });
+      await navigator.share({ files:[file], title:'60/30/10 capture', text:'Captured with 60/30/10 Studio' });
       return;
     }
-
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.style.display = 'none'; a.href = url; a.download = filename;
+    const a = document.createElement('a'); a.style.display='none'; a.href=url; a.download=filename;
     document.body.appendChild(a); a.click();
 
-    // iOS Safari last resort → open tab so user can long-press Save Image
     const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    if (isiOS) setTimeout(() => window.open(url, '_blank'), 350);
-
-    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
+    if (isiOS) setTimeout(()=>window.open(url,'_blank'), 350);
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 2000);
   }catch(e){
     console.warn('Capture/share failed:', e);
     alert('Could not save the photo. Try again.');
@@ -324,10 +488,10 @@ async function saveCapture(){
 /* =========================
    Reference overlay (ghost/wipe)
 ========================= */
-const gcv = $('#ghost'); const gctx = gcv.getContext('2d', { willReadFrequently:true });
-const refUpload = $('#refUpload'); const grabRefBtn = $('#grabRef'); const overlayMode = $('#overlayMode');
-const alpha = $('#alpha'); const scale = $('#scale'); const offx = $('#offx'); const offy = $('#offy');
-const flip = $('#flip'); const grid = $('#grid'); const wipe = $('#wipe'); const wipeWrap = $('#wipeWrap');
+const gcv=$('#ghost'); const gctx=gcv.getContext('2d',{willReadFrequently:true});
+const refUpload=$('#refUpload'); const grabRefBtn=$('#grabRef'); const overlayMode=$('#overlayMode');
+const alpha=$('#alpha'); const scale=$('#scale'); const offx=$('#offx'); const offy=$('#offy');
+const flip=$('#flip'); const grid=$('#grid'); const wipe=$('#wipe'); const wipeWrap=$('#wipeWrap');
 let refImg=null;
 
 function onUploadRef(e){
@@ -341,23 +505,21 @@ function grabRefFromVideo(){
   oc.getContext('2d').drawImage(v,0,0);
   const img=new Image(); img.onload=()=>{ refImg=img; }; img.src=oc.toDataURL('image/png');
 }
-
 function drawGrid(ctx,W,H){
   ctx.save();
   ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=1;
-  ctx.beginPath(); // thirds
+  ctx.beginPath();
   ctx.moveTo(W/3,0); ctx.lineTo(W/3,H);
   ctx.moveTo(2*W/3,0); ctx.lineTo(2*W/3,H);
   ctx.moveTo(0,H/3); ctx.lineTo(W,H/3);
   ctx.moveTo(0,2*H/3); ctx.lineTo(W,2*H/3);
   ctx.stroke();
-  ctx.strokeStyle='rgba(255,255,255,0.25)'; // center
+  ctx.strokeStyle='rgba(255,255,255,0.25)';
   ctx.beginPath(); ctx.moveTo(W/2,0); ctx.lineTo(W/2,H); ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke();
   ctx.restore();
 }
-
 function drawGhost(){
-  const W = gcv.width = v.clientWidth || v.videoWidth;
+  const W = gcv.width  = v.clientWidth || v.videoWidth;
   const H = gcv.height = v.clientHeight || (v.videoHeight * (W/(v.videoWidth||W))|0);
   const ctx=gctx; ctx.clearRect(0,0,W,H);
 
@@ -396,7 +558,7 @@ window.addEventListener('keydown', (e)=>{
 /* =========================
    Golden HUD
 ========================= */
-const phiOn = $('#phiOn'); const phiSpiralSel = $('#phiSpiral'); const phiScoreEl = $('#phiScore');
+const phiOn=$('#phiOn'); const phiSpiralSel=$('#phiSpiral'); const phiScoreEl=$('#phiScore');
 
 function getFrameRect(){
   const W=gcv.width,H=gcv.height, vAR=(v.videoWidth||0)/(v.videoHeight||1);
@@ -445,20 +607,54 @@ function saliencyFromImageData(imgData,w,h){
   const blur=new Float32Array(w*h);
   for(let y=1;y<h-1;y++) for(let x=1;x<w-1;x++){ let acc=0; for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++) acc+=Y[(y+dy)*w+(x+dx)]; blur[y*w+x]=acc/9; }
   const G=new Float32Array(w*h);
-  for(let y=1;y<h-1;y++) for(let x=1;x<w-1;x++){ const p=y*w+x; const gx=-Y[p-w-1]-2*Y[p-1]-Y[p+w-1]+Y[p-w+1]+2*Y[p+1]+Y[p+w+1]; const gy=-Y[p-w-1]-2*Y[p-w]-Y[p-w+1]+Y[p+w-1]+2*Y[p+w]+Y[p+w+1]; G[p]=Math.hypot(gx,gy); }
-  let maxG=1e-6,maxC=1e-6; for(let i=0;i<w*h;i++){ const lc=Math.abs(Y[i]-blur[i]); if(G[i]>maxG)maxG=G[i]; if(lc>maxC)maxC=lc; }
-  for(let i=0;i<w*h;i++){ const lc=Math.abs(Y[i]-blur[i])/maxC, eg=G[i]/maxG; S[i]=S[i]*(0.5+0.5*lc)*(0.5+0.5*eg); }
-  const q=+( $('#phiQ').value )||5, flat=Array.from(S).sort((a,b)=>b-a), thresh=flat[Math.max(0,Math.floor((q/100)*flat.length)-1)]||0;
-  let sum=0,sx=0,sy=0; for(let y=0;y<h;y++) for(let x=0;x<w;x++){ const p=y*w+x, wgt=S[p]>=thresh?S[p]:0; if(wgt>0){ sum+=wgt; sx+=x*wgt; sy+=y*wgt; } }
+  for(let y=1;y<h-1;y++) for(let x=1;x<w-1;x++){
+    const p=y*w+x;
+    const gx=-Y[p-w-1]-2*Y[p-1]-Y[p+w-1]+Y[p-w+1]+2*Y[p+1]+Y[p+w+1];
+    const gy=-Y[p-w-1]-2*Y[p-w]-Y[p-w+1]+Y[p+w-1]+2*Y[p+w]+Y[p+w+1];
+    G[p]=Math.hypot(gx,gy);
+  }
+  let maxG=1e-6,maxC=1e-6;
+  for(let i=0;i<w*h;i++){ const lc=Math.abs(Y[i]-blur[i]); if(G[i]>maxG)maxG=G[i]; if(lc>maxC)maxC=lc; }
+  for(let i=0;i<w*h;i++){
+    const lc=Math.abs(Y[i]-blur[i])/maxC, eg=G[i]/maxG;
+    S[i]=S[i]*(0.5+0.5*lc)*(0.5+0.5*eg);
+  }
+  const q=+( $('#phiQ').value )||5, flat=Array.from(S).sort((a,b)=>b-a);
+  const thresh=flat[Math.max(0,Math.floor((q/100)*flat.length)-1)]||0;
+  let sum=0,sx=0,sy=0; for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const p=y*w+x, wgt=S[p]>=thresh?S[p]:0; if(wgt>0){ sum+=wgt; sx+=x*wgt; sy+=y*wgt; }
+  }
   if(sum===0) return { cx:w/2, cy:h/2, score:0, bestCorner:null };
-  const cx=sx/sum, cy=sy/sum, phi=1.61803398875, pts=[[w/phi,h/phi],[w/phi,h-h/phi],[w-w/phi,h/phi],[w-w/phi,h-h/phi]];
-  let bestD=1e9,bestIdx=0; for(let i=0;i<4;i++){ const [px,py]=pts[i], d2=(cx-px)*(cx-px)+(cy-py)*(cy-py); if(d2<bestD){bestD=d2; bestIdx=i;} }
-  const dmin=Math.sqrt(bestD), diag=Math.hypot(w,h), score=Math.max(0,Math.min(100,Math.round(100*(1-dmin/(0.15*diag)))));
+  const cx=sx/sum, cy=sy/sum, phi=1.61803398875;
+  const pts=[[w/phi,h/phi],[w/phi,h-h/phi],[w-w/phi,h/phi],[w-w/phi,h-h/phi]];
+  let bestD=1e9,bestIdx=0; for(let i=0;i<4;i++){
+    const [px,py]=pts[i], d2=(cx-px)*(cx-px)+(cy-py)*(cy-py); if(d2<bestD){bestD=d2; bestIdx=i;}
+  }
+  const dmin=Math.sqrt(bestD), diag=Math.hypot(w,h);
+  const score=Math.max(0,Math.min(100,Math.round(100*(1-dmin/(0.15*diag)))));
   return { cx, cy, score, bestCorner:['tl','bl','tr','br'][bestIdx] };
 }
-function drawPhiMarker(ctx, cx,cy){
+function drawPhiMarker(ctx,cx,cy){
   ctx.save(); ctx.fillStyle='rgba(0,255,180,0.9)'; ctx.strokeStyle='rgba(0,0,0,0.6)'; ctx.lineWidth=2;
   ctx.beginPath(); ctx.arc(cx,cy,6,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
+}
+
+/* =========================
+   Score update throttle
+========================= */
+let scoreUpdateMode   = localStorage.getItem('scoreUpdateMode') || 'frame'; // 'frame'|'second'
+let lastScoreUpdateTs = 0;   // ms
+let prevScoreInt      = null;
+
+function initScoreUpdateMode(){
+  const scoreUpdateSel = document.getElementById('scoreUpdate');
+  if (!scoreUpdateSel) return;
+  scoreUpdateSel.value = scoreUpdateMode;
+  scoreUpdateSel.addEventListener('change', (e)=>{
+    scoreUpdateMode   = e.target.value;
+    localStorage.setItem('scoreUpdateMode', scoreUpdateMode);
+    lastScoreUpdateTs = 0; // force immediate update next tick
+  });
 }
 
 /* =========================
@@ -467,231 +663,107 @@ function drawPhiMarker(ctx, cx,cy){
 let lastMean=null;
 function sceneCut(mean, th=12){ if(!lastMean){lastMean=mean;return false;} const d=Math.hypot(mean[0]-lastMean[0],mean[1]-lastMean[1],mean[2]-lastMean[2]); lastMean=mean; return d>th; }
 
-function rgb2hsv(r,g,b){
-  r/=255; g/=255; b/=255;
-  const max=Math.max(r,g,b), min=Math.min(r,g,b);
-  let h=0, s, v=max;
-  const d=max-min;
-  s = max===0 ? 0 : d/max;
-  if (max!==min){
-    switch (max){
-      case r: h=(g-b)/d + (g<b ? 6 : 0); break;
-      case g: h=(b-r)/d + 2;            break;
-      case b: h=(r-g)/d + 4;            break;
-    }
-    h/=6;
+function kmeansFrame(pixels, k=3, maxIter=8){ return kmeans(pixels,k,maxIter); } // alias
+
+function loop(){
+  if (v.videoWidth===0){ requestAnimationFrame(loop); return; }
+
+  drawGhost();
+
+  const scaleX = DOWNSCALE_W / v.videoWidth;
+  const w = DOWNSCALE_W, h = Math.round(v.videoHeight * scaleX);
+  cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d',{willReadFrequently:true});
+  ctx.drawImage(v, 0, 0, w, h);
+  const imgData = ctx.getImageData(0,0,w,h);
+  const data = imgData.data;
+
+  // mean for scene cut
+  let r=0,g=0,b=0,cnt=0; for(let i=0;i<data.length;i+=32){ r+=data[i]; g+=data[i+1]; b+=data[i+2]; cnt++; }
+  const mean=[r/cnt,g/cnt,b/cnt]; if (sceneCut(mean)) emaPct=null;
+
+  // sample pixels (filtering neutrals optional)
+  const step=12, buf=[];
+  for(let i=0;i<data.length;i+=step){
+    const R=data[i],G=data[i+1],B=data[i+2];
+    const [,sat]=rgb2hsv(R,G,B);
+    if (inclNeutrals.checked || sat>=0.12) buf.push(R,G,B);
   }
-  return [h,s,v];
-}
+  if (!buf.length){ requestAnimationFrame(loop); return; }
 
-function kmeans(pixels, k=3, maxIter=8){
-  const n = pixels.length / 3;
+  // k-means, sorted by share
+  const arr=new Float32Array(buf); const { centers, counts } = kmeansFrame(arr, K, 7);
+  const total=counts.reduce((a,b)=>a+b,0)||1;
+  const sw = counts.map((c,i)=>{
+    const [R,G,B]=centers[i].map(x=>Math.max(0,Math.min(255,Math.round(x))));
+    return { rgb:[R,G,B], pct:100*c/total };
+  }).sort((a,b)=>b.pct-a.pct).slice(0,3);
 
-/* =========================
-   Theme derivation from landing image
-========================= */
-const THEME_KEY = 'derivedTheme_v1';
+  // exponential moving average for stability
+  const vec=sw.map(s=>s.pct); if(!emaPct) emaPct=vec; else emaPct=emaPct.map((p,i)=>p*(1-EMA)+vec[i]*EMA);
 
-function rgbToHex(rgb){
-  const [r,g,b] = rgb.map(v => Math.max(0, Math.min(255, Math.round(v))));
-  return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('').toUpperCase();
-}
-function luminance([r,g,b]){
-  // Perceived luminance 0..255
-  return 0.2126*r + 0.7152*g + 0.0722*b;
-}
+  // UI bars
+  bars.innerHTML=''; legend.innerHTML='';
+  const sorted = sw.map((s,i)=> ({...s, pct: emaPct[i]}));
+  const totPct = sorted.reduce((a,b)=>a+b.pct,0) || 1;
 
-function themeFromClusters(clusters){
-  // clusters: [{rgb:[r,g,b], pct:number}]
-  // Compute HSV & luminance for decisions
-  const enriched = clusters.map(c => {
-    const [h,s,v] = rgb2hsv(c.rgb[0], c.rgb[1], c.rgb[2]);
-    return { ...c, h, s, v, Y: luminance(c.rgb) };
+  sorted.forEach((s, i)=>{ 
+    const pct = s.pct * 100 / totPct;
+    const div=document.createElement('div'); div.className='bar';
+    const fill=document.createElement('div'); fill.className='fill';
+    fill.style.width=`${pct.toFixed(2)}%`;
+    fill.style.background=`rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})`;
+    const label=document.createElement('span');
+    const hex='#'+s.rgb.map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+    label.textContent = `${pct.toFixed(1)}%  ${hex}`;
+    const tick=document.createElement('i'); tick.className='target'; tick.style.left=`${TARGET[i]}%`;
+    div.appendChild(fill); div.appendChild(label); div.appendChild(tick);
+    bars.appendChild(div);
+    const swEl=document.createElement('span'); swEl.className='swatch';
+    swEl.style.background=`rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})`; legend.appendChild(swEl);
   });
 
-  // Primary: darkest of the dominant clusters (keeps backgrounds rich)
-  const primary = [...enriched].sort((a,b)=> (a.Y - b.Y) || (b.pct - a.pct))[0];
+  // score (throttled if needed)
+  const pcts = sorted.map(s=> s.pct * 100 / totPct);
+  const {score, tag, actual} = grade6010(pcts);
 
-  // Secondary: most dominant that isn't primary, prefer medium luminance
-  const secondary = [...enriched]
-    .filter(c => c !== primary)
-    .sort((a,b)=> (Math.abs(a.Y - primary.Y*1.25) - Math.abs(b.Y - primary.Y*1.25)) || (b.pct - a.pct))[0] || enriched[1] || primary;
+  const now = performance.now();
+  const shouldUpdateScore =
+    (scoreUpdateMode === 'frame') || (now - lastScoreUpdateTs >= 1000);
 
-  // Accent: highest saturation, not super-dark
-  const accentCand = [...enriched]
-    .filter(c => c !== primary && c !== secondary)
-    .sort((a,b)=> (b.s - a.s) || (b.pct - a.pct))[0] || secondary;
-
-  const primaryHex   = rgbToHex(primary.rgb);
-  const secondaryHex = rgbToHex(secondary.rgb);
-  const accentHex    = rgbToHex(accentCand.rgb);
-
-  // Text colors based on primary brightness
-  const primaryY = primary.Y; // 0..255
-  const textLight = '#EDEFF2';
-  const textDark  = '#0B0D10';
-  const isDarkBG  = primaryY < 140;
-
-  const vars = {
-    '--ui-primary':   primaryHex,
-    '--ui-secondary': secondaryHex,
-    '--ui-accent':    accentHex,
-    '--ui-text':      isDarkBG ? textLight : textDark,
-    '--ui-text-muted': isDarkBG ? '#B8C2D6' : '#334155',
-    '--ui-border':    isDarkBG ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.12)',
-    '--ui-surface':   isDarkBG ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-    '--ui-ring':      isDarkBG ? 'color-mix(in oklab, var(--ui-accent) 55%, transparent)' 
-                               : 'color-mix(in oklab, var(--ui-accent) 40%, transparent)'
-  };
-  return vars;
-}
-
-function applyThemeVars(vars){
-  const root = document.documentElement;
-  Object.entries(vars).forEach(([k,v]) => root.style.setProperty(k, v));
-  // Persist
-  try { localStorage.setItem(THEME_KEY, JSON.stringify(vars)); } catch(_) {}
-}
-
-async function deriveThemeFromImageUrl(url){
-  // Load image
-  const img = new Image();
-  // If the image is same-origin, crossOrigin isn't needed; leaving this harmlessly set helps on GitHub Pages too.
-  img.crossOrigin = 'anonymous';
-  const loadP = new Promise((res, rej)=>{
-    img.onload = ()=>res();
-    img.onerror = ()=>rej(new Error('Failed to load image for theme derivation'));
-  });
-  img.src = url;
-  await loadP;
-
-  // Draw to a small canvas and sample
-  const maxW = 240;
-  const scale = img.naturalWidth ? Math.min(1, maxW / img.naturalWidth) : 1;
-  const w = Math.max(16, Math.round((img.naturalWidth||maxW) * scale));
-  const h = Math.max(16, Math.round((img.naturalHeight||maxW) * scale));
-  const oc = document.createElement('canvas');
-  oc.width = w; oc.height = h;
-  const octx = oc.getContext('2d', { willReadFrequently: true });
-  octx.drawImage(img, 0, 0, w, h);
-
-  let data;
-  try {
-    data = octx.getImageData(0,0,w,h).data;
-  } catch(err){
-    console.warn('Canvas tainted (CORS). Ensure the hero image is served from the same origin.');
-    return;
+  if (shouldUpdateScore) {
+    actualEl.textContent = `${actual[0]} / ${actual[1]} / ${actual[2]}`;
+    scoreEl.textContent  = String(score);
+    scoreEl.className    = `tag ${tag}`;
+    if (prevScoreInt !== 100 && score === 100) playChime();
+    prevScoreInt = score;
+    lastScoreUpdateTs = now;
   }
 
-  // Build pixel buffer; prefer a stride to keep it fast
-  const stride = 4 * 4; // every 4th pixel
-  const buf = [];
-  for (let i=0; i<data.length; i += stride){
-    const r = data[i], g = data[i+1], b = data[i+2];
-    // Ignore very near-neutrals for better accent selection
-    const [,s] = rgb2hsv(r,g,b);
-    if (s < 0.04) continue;
-    buf.push(r,g,b);
-  }
-  if (buf.length < 300) {
-    // If too few pixels after saturation filtering, just use everything
-    for (let i=0; i<data.length; i += 4*4){
-      buf.push(data[i], data[i+1], data[i+2]);
-    }
+  // Golden HUD
+  if (phiOn.checked){
+    const rect=getFrameRect();
+    drawPhiGrid(gctx, rect);
+    const { cx, cy, score:phiScore, bestCorner } = saliencyFromImageData(imgData, w, h);
+    const sx = rect.x + (cx / w) * rect.w;
+    const sy = rect.y + (cy / h) * rect.h;
+    drawPhiMarker(gctx, sx, sy);
+    const mode = phiSpiralSel.value;
+    const fit  = $('#phiFit').value;
+    const spiralCorner = mode==='auto' ? (bestCorner || 'tr') : mode;
+    if (mode!=='off') drawPhiSpiral(gctx, rect, spiralCorner, fit);
+    phiScoreEl.textContent = phiScore;
+    phiScoreEl.className = 'tag ' + (phiScore>=85?'pass': phiScore<60?'fail':'warn');
+  } else {
+    phiScoreEl.textContent = '--';
+    phiScoreEl.className = 'tag';
   }
 
-  const pixels = new Float32Array(buf);
-  // 4 clusters to get a nicer pick distribution
-  const { centers, counts } = kmeans(pixels, 4, 8);
-  const total = counts.reduce((a,b)=>a+b,0) || 1;
-  const clusters = counts.map((c,i) => ({
-    rgb: [
-      Math.max(0, Math.min(255, Math.round(centers[i][0]))),
-      Math.max(0, Math.min(255, Math.round(centers[i][1]))),
-      Math.max(0, Math.min(255, Math.round(centers[i][2])))
-    ],
-    pct: c / total
-  })).sort((a,b)=>b.pct - a.pct);
-
-  applyThemeVars(themeFromClusters(clusters));
+  ('requestVideoFrameCallback' in HTMLVideoElement.prototype)
+    ? v.requestVideoFrameCallback(()=>loop())
+    : requestAnimationFrame(loop);
 }
-
-function tryAutoDeriveFromHero(){
-  // Read the resolved background-image of the landing card .bg
-  const bgEl = document.querySelector('#landing .bg');
-  if (!bgEl) return;
-  const bg = getComputedStyle(bgEl).backgroundImage;
-  const m = bg && bg.match(/url\(["']?(.+?)["']?\)/);
-  if (m && m[1]) {
-    deriveThemeFromImageUrl(m[1]).catch(err=>console.warn('Theme derive failed:', err));
-  }
-}
-
-function restoreSavedThemeIfAny(){
-  try{
-    const raw = localStorage.getItem(THEME_KEY);
-    if (!raw) return false;
-    const vars = JSON.parse(raw);
-    if (vars && typeof vars === 'object') {
-      applyThemeVars(vars);
-      return true;
-    }
-  }catch(_){}
-  return false;
-}
-
-   
-  // farthest-first seeding
-  const centers = new Array(k).fill(0).map(()=>[0,0,0]);
-  const first = Math.floor(Math.random()*n);
-  centers[0] = [pixels[first*3], pixels[first*3+1], pixels[first*3+2]];
-  for (let ci=1; ci<k; ci++){
-    let farIdx = 0, farDist = -1;
-    for (let i=0; i<n; i++){
-      const r=pixels[i*3], g=pixels[i*3+1], b=pixels[i*3+2];
-      let dmin = Infinity;
-      for (let j=0; j<ci; j++){
-        const dr=r-centers[j][0], dg=g-centers[j][1], db=b-centers[j][2];
-        const d=dr*dr+dg*dg+db*db;
-        if (d<dmin) dmin = d;
-      }
-      if (dmin > farDist){ farDist = dmin; farIdx = i; }
-    }
-    centers[ci] = [pixels[farIdx*3], pixels[farIdx*3+1], pixels[farIdx*3+2]];
-  }
-
-  const assign = new Int16Array(n);
-  for (let it=0; it<maxIter; it++){
-    // assign
-    for (let i=0; i<n; i++){
-      const r=pixels[i*3], g=pixels[i*3+1], b=pixels[i*3+2];
-      let best=-1, bd=Infinity;
-      for (let j=0; j<k; j++){
-        const dr=r-centers[j][0], dg=g-centers[j][1], db=b-centers[j][2];
-        const d=dr*dr+dg*dg+db*db;
-        if (d<bd){ bd=d; best=j; }
-      }
-      assign[i] = best;
-    }
-    // update
-    const sum = centers.map(()=>[0,0,0,0]);
-    for (let i=0; i<n; i++){
-      const a=assign[i], off=i*3;
-      sum[a][0]+=pixels[off]; sum[a][1]+=pixels[off+1]; sum[a][2]+=pixels[off+2]; sum[a][3]++;
-    }
-    for (let j=0; j<k; j++){
-      if (sum[j][3]>0){
-        centers[j][0]=sum[j][0]/sum[j][3];
-        centers[j][1]=sum[j][1]/sum[j][3];
-        centers[j][2]=sum[j][2]/sum[j][3];
-      }
-    }
-  }
-
-  const counts = new Array(k).fill(0);
-  for (let i=0; i<n; i++) counts[assign[i]]++;
-  return { centers, counts };
-}
+v.addEventListener('loadeddata', loop);
 
 function grade6010(pcts){
   const a=[...pcts].sort((x,y)=>y-x).slice(0,3);
@@ -703,111 +775,10 @@ function grade6010(pcts){
   return {score:Math.round(score), tag, actual:a.map(v=>Math.round(v))};
 }
 
-function loop(){
-  if (v.videoWidth===0){ requestAnimationFrame(loop); return; }
-
-  drawGhost();
-
-  const scaleX = DOWNSCALE_W / v.videoWidth;
-  const w = DOWNSCALE_W, h = Math.round(v.videoHeight * scaleX);
-  cv.width = w; cv.height = h;
-  const ctx = cv.getContext('2d', { willReadFrequently:true });
-  ctx.drawImage(v, 0, 0, w, h);
-  const imgData = ctx.getImageData(0,0,w,h);
-  const data = imgData.data;
-
-  // color clusters
-  let r=0,g=0,b=0,cnt=0; for(let i=0;i<data.length;i+=32){ r+=data[i]; g+=data[i+1]; b+=data[i+2]; cnt++; }
-  const mean=[r/cnt,g/cnt,b/cnt]; if (sceneCut(mean)) emaPct=null;
-
-  const step=12, buf=[];
-  for(let i=0;i<data.length;i+=step){
-    const R=data[i],G=data[i+1],B=data[i+2]; const [,sat]=rgb2hsv(R,G,B);
-    if (inclNeutrals.checked || sat>=0.12) buf.push(R,G,B);
-  }
-  if (!buf.length){ requestAnimationFrame(loop); return; }
-
-  const arr=new Float32Array(buf); const { centers, counts } = kmeans(arr, K, 7);
-  const total=counts.reduce((a,b)=>a+b,0)||1;
-  const sw = counts.map((c,i)=>{ const [R,G,B]=centers[i].map(x=>Math.max(0,Math.min(255,Math.round(x)))); return { rgb:[R,G,B], pct:100*c/total }; }).sort((a,b)=>b.pct-a.pct).slice(0,3);
-  const vec=sw.map(s=>s.pct); if(!emaPct) emaPct=vec; else emaPct=emaPct.map((p,i)=>p*(1-EMA)+vec[i]*EMA);
-
-  bars.innerHTML=''; legend.innerHTML='';
-  const sorted = sw.map((s,i)=> ({...s, pct: emaPct[i]}));
-  const totPct = sorted.reduce((a,b)=>a+b.pct,0) || 1;
-
-  sorted.forEach((s, i)=>{ 
-    const pct = s.pct * 100 / totPct;
-    const div=document.createElement('div'); 
-    div.className='bar';
-    
-    const fill=document.createElement('div'); 
-    fill.className='fill'; 
-    fill.style.width=`${pct.toFixed(2)}%`; 
-    fill.style.background=`rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})`;
-    
-    const label=document.createElement('span'); 
-    const hex = '#'+s.rgb.map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
-    label.textContent = `${pct.toFixed(1)}%  ${hex}`;
-
-    // target ticks (60/30/10)
-    const tick = document.createElement('i');
-    tick.className = 'target';
-    tick.style.left = `${TARGET[i]}%`;
-
-    div.appendChild(fill);
-    div.appendChild(label);
-    div.appendChild(tick);
-    bars.appendChild(div);
-
-    const swEl=document.createElement('span'); swEl.className='swatch'; swEl.style.background=`rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})`; legend.appendChild(swEl);
-  });
-
-  const pcts = sorted.map(s => (s.pct * 100) / totPct);
-  const { score, tag, actual } = grade6010(pcts);
-
-  // throttle score UI updates
-  const now = performance.now();
-  const shouldUpdateScore =
-    (scoreUpdateMode === 'frame') || (now - lastScoreUpdateTs >= 1000);
-
-  if (shouldUpdateScore) {
-    actualEl.textContent = `${actual[0]} / ${actual[1]} / ${actual[2]}`;
-    scoreEl.textContent = String(score);
-    scoreEl.className = `tag ${tag}`;
-
-    // chime only when the *displayed* score hits 100
-    if (typeof playChime === 'function' && prevScoreInt !== 100 && score === 100) {
-      playChime();
-    }
-    prevScoreInt = score;
-    lastScoreUpdateTs = now;
-  }
-
-  // Golden HUD
-  if ($('#phiOn').checked){
-    const rect=getFrameRect();
-    drawPhiGrid(gctx, rect);
-    const { cx, cy, score:phiScore, bestCorner } = saliencyFromImageData(imgData, w, h);
-    const sx = rect.x + (cx / w) * rect.w;
-    const sy = rect.y + (cy / h) * rect.h;
-    drawPhiMarker(gctx, sx, sy);
-
-    const mode = $('#phiSpiral').value;
-    const fit  = $('#phiFit').value;
-    const spiralCorner = mode==='auto' ? (bestCorner || 'tr') : mode;
-    if (mode!=='off') drawPhiSpiral(gctx, rect, spiralCorner, fit);
-
-    $('#phiScore').textContent = phiScore;
-    $('#phiScore').className = 'tag ' + (phiScore>=85?'pass': phiScore<60?'fail':'warn');
-  } else {
-    $('#phiScore').textContent = '--';
-    $('#phiScore').className = 'tag';
-  }
-
-  // refresh cadence: ~display refresh (requestVideoFrameCallback) or RAF fallback
-  ('requestVideoFrameCallback' in HTMLVideoElement.prototype)
-    ? v.requestVideoFrameCallback(()=>loop())
-    : requestAnimationFrame(loop);
-}
-v.addEventListener('loadeddata', loop);
+/* ===== OPTIONAL dev hooks =====
+   // Re-derive from hero manually (e.g. behind a button with id="matchTheme")
+   document.getElementById('matchTheme')?.addEventListener('click', ()=>{
+     try{ localStorage.removeItem(THEME_KEY); }catch(_){}
+     deriveThemeFromHeroNow();
+   });
+*/

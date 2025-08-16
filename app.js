@@ -1,7 +1,7 @@
 /* =========================
    Config
 ========================= */
-const ENABLE_PAYWALL = true;   // set true if you actually want to gate
+const ENABLE_PAYWALL = false;   // set true if you actually want to gate
 const TRIAL_DAYS = 3;
 const TRIAL_KEY  = 'trialStartedAt_v1';
 const PRO_KEY    = 'proEntitlement_v1';

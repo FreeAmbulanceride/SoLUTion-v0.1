@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>soLUtion</title>
+  <title>60/30/10 Monitor • Ghost Overlay • Golden HUD</title>
 
-  <!-- Preload the landing hero image (adjust path if you move the file) -->
+  <!-- Preload the landing hero image (adjust path if needed) -->
   <link rel="preload" as="image" href="/SoLUTion-v0.1/soLUTion1a.png?v=2" />
 
   <style>
@@ -14,8 +14,11 @@
       --ui-text:#EDEFF2; --ui-text-muted:#B8C2D6;
       --ui-border:rgba(255,255,255,0.08); --ui-surface:rgba(255,255,255,0.05);
       --ui-ring:rgba(245,158,11,0.55);
-    }
 
+      /* global font stack (no serif anywhere) */
+      --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+                   "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+    }
     /* base */
     *{ box-sizing:border-box }
     html,body{ height:100% }

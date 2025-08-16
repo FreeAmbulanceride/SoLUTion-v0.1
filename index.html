@@ -109,13 +109,26 @@
 
         <div class="overlayHUD" aria-hidden="true">
           <div class="bars" id="bars"></div>
-          <div class="readout">
-            <div id="legend"></div>
-            <div>Actual: <span id="actual"></span></div>
-            <div>Score: <span id="score" class="tag">--</span></div>
-            <div>Phi: <span id="phiScore" class="tag">--</span></div>
-          </div>
-        </div>
+         
+<div class="readout">
+  <div id="legend"></div>
+  <div>Actual: <span id="actual"></span></div>
+
+  <div style="display:flex; align-items:center; gap:10px;">
+    <div>Score: <span id="score" class="tag">--</span></div>
+    <label style="font-weight:600; opacity:.85;">
+      update
+      <select id="scoreUpdate">
+        <option value="frame">per frame</option>
+        <option value="second">per second</option>
+      </select>
+    </label>
+  </div>
+
+  <div>Phi: <span id="phiScore" class="tag">--</span></div>
+</div>
+
+          
       </section>
     </main>
 

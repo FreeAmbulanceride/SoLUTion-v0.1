@@ -775,10 +775,4 @@ function grade6010(pcts){
   return {score:Math.round(score), tag, actual:a.map(v=>Math.round(v))};
 }
 
-/* ===== OPTIONAL dev hooks =====
-   // Re-derive from hero manually (e.g. behind a button with id="matchTheme")
-   document.getElementById('matchTheme')?.addEventListener('click', ()=>{
-     try{ localStorage.removeItem(THEME_KEY); }catch(_){}
-     deriveThemeFromHeroNow();
-   });
-*/
+

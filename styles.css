@@ -42,26 +42,22 @@ body.lock{ overflow:hidden }
 .hero .card .scrim { pointer-events: none; }
 .hero{
   min-height: 100dvh;
-  display:grid; place-items:center;
-  padding:24px;
-  background:
-    radial-gradient(60% 60% at 70% 10%, color-mix(in oklab, var(--ui-accent) 14%, transparent), transparent 60%),
-    var(--ui-primary);
-  transition: opacity .25s ease, transform .25s ease;
+  display: grid;
+  place-items: center;
+  /* responsive padding; avoids overflow with side padding on mobile */
+  padding: clamp(16px, 4vw, 28px);
+  background: /* keep your background here */;
 }
-#landing.is-hiding{ opacity:0; transform: translateY(-8px); }
 
 .hero .card{
-  position:relative;
-  overflow:hidden;
-  padding:0;
-  width:min(900px, 96vw);
-  min-height:360px;
-  border-radius:16px;
-  background:var(--ui-secondary);
-  border:1px solid var(--ui-border);
-  box-shadow:0 24px 80px rgba(0,0,0,.45);
+  position: relative;
+  /* … keep your other styles … */
+  width: 100%;          /* fill the padded content area */
+  max-width: 900px;     /* cap the width */
+  min-height: 360px;
+  margin-inline: auto;  /* extra centering safety */
 }
+
 .card .bg{
   position:absolute; inset:0;
   background: var(--hero, url('./soLUTion1a.png')) center/cover no-repeat;
@@ -80,6 +76,14 @@ body.lock{ overflow:hidden }
 .hero h1{ margin:0 0 6px 0; font-size:28px }
 .hero p { margin:8px 0 18px 0; color:var(--ui-text-muted) }
 .hero .actions{ display:flex; gap:12px; flex-wrap:wrap }
+@supports (padding: max(0px)) {
+  .hero{
+    padding-left:  max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+}
+
+
 
 /* Studio */
 .overlayHUD .readout { position: relative; z-index: 5; }

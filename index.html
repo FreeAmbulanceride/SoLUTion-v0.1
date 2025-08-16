@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <title>60/30/10 Monitor • Ghost Overlay • Golden HUD</title>
+    <title>60/30/10 Color Monitor • Overlay • Golden Ratio Accuracy Generator</title>
     <link rel="stylesheet" href="styles.css" />
     <!-- No web fonts: stick to fast, crisp system UI fonts -->
     <script src="app.js" defer></script>
@@ -26,11 +26,10 @@
         <div class="content">
           <h1>On-Set Color &amp; Composition Studio</h1>
           <p>
-            Live 60/30/10 color balance. Reference ghost/wipe. Golden-ratio grid
-            &amp; focal dot.
+           Real-Time 60/30/10 Color Balance Metering
           </p>
           <div class="actions">
-            <button id="openStudio" class="btn">Open studio</button>
+            <button id="openStudio" class="btn">Open Studio</button>
           </div>
           <p class="small" style="opacity:.85">
             Camera requires HTTPS or <code>http://localhost</code>. Mobile
@@ -43,7 +42,7 @@
     <!-- Studio -->
     <main id="studio" hidden>
       <header class="toolbar">
-        <button id="startBtn" class="btn">Start camera</button>
+        <button id="startBtn" class="btn">Start Camera</button>
         <label>Camera <select id="device"></select></label>
         <span id="err" role="status" aria-live="polite"></span>
 
@@ -54,7 +53,7 @@
 
         <div class="group">
           <label>Ref still <input id="refUpload" type="file" accept="image/*" /></label>
-          <button id="grabRef" class="btn">Capture current</button>
+          <button id="grabRef" class="btn">Capture Current Frame</button>
           <label>mode
             <select id="overlayMode">
               <option value="overlay">Ghost</option>
@@ -65,7 +64,7 @@
         </div>
 
         <div class="group">
-          <button id="btnCapture" class="btn">Capture photo</button>
+          <button id="btnCapture" class="btn">Snap/Save Photo</button>
         </div>
 
         <div class="group">
@@ -80,7 +79,7 @@
         </div>
 
         <div class="group">
-          <label><input id="phiOn" type="checkbox" /> Golden HUD</label>
+          <label><input id="phiOn" type="checkbox" /> Golden HUD Display</label>
           <label>spiral
             <select id="phiSpiral">
               <option value="off" selected>off — no spiral</option>
@@ -128,11 +127,11 @@
         <div class="pw-actions">
           <button class="btn" id="btn-month">Go Pro — $0.99/mo</button>
           <button class="btn" id="btn-year">$9.99/yr</button>
-          <button class="btn" id="btn-life">Lifetime $29.99</button>
+          <button class="btn" id="btn-life">Lifetime full of free upgrades $29.99</button>
         </div>
         <div class="pw-subtle">
-          <button class="link" id="btn-start-trial">Start free trial</button>
-          <button class="link" id="btn-restore">I already purchased</button>
+          <button class="link" id="btn-start-trial">Start Free Trial</button>
+          <button class="link" id="btn-restore">I've already purchased</button>
         </div>
       </div>
     </div>

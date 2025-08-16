@@ -19,23 +19,25 @@
       --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
                    "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
     }
+
     /* base */
     *{ box-sizing:border-box }
     html,body{ height:100% }
+    html, body, h1,h2,h3,h4,h5,h6, p, a, button, input, select, textarea, code, pre {
+      font-family: var(--font-sans) !important;
+    }
     body{
       margin:0;
-      font:14px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-      background:var(--ui-primary);
-      color:var(--ui-text);
-      -webkit-font-smoothing:antialiased;
+      font-size:14px; line-height:1.35;
+      background:var(--ui-primary); color:var(--ui-text);
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
     }
-    body.lock{ overflow:hidden } /* lock scroll while on landing */
+    body.lock{ overflow:hidden }
 
     .btn{
       appearance:none; border:none; border-radius:10px; padding:10px 14px; font-weight:700;
       background:var(--ui-accent); color:#0A0B0D; box-shadow:0 2px 10px rgba(0,0,0,.25);
-      transition:transform .08s ease, filter .12s ease;
-      cursor:pointer;
+      transition:transform .08s ease, filter .12s ease; cursor:pointer;
     }
     .btn:hover{ filter:brightness(1.05) }
     .btn:active{ transform:translateY(1px) }
@@ -55,15 +57,10 @@
 
     /* Card with background image */
     .hero .card{
-      position:relative;
-      overflow:hidden;
-      padding:0;
-      border-radius:16px;
-      background:var(--ui-secondary);
-      border:1px solid var(--ui-border);
+      position:relative; overflow:hidden; padding:0; border-radius:16px;
+      background:var(--ui-secondary); border:1px solid var(--ui-border);
       box-shadow:0 24px 80px rgba(0,0,0,.45);
-      width:min(1100px,96vw);
-      min-height:360px; /* makes sure the bg is visible even with short copy */
+      width:min(1100px,96vw); min-height:360px;
     }
     .card .bg{
       position:absolute; inset:0;
@@ -71,14 +68,9 @@
       filter:saturate(110%) contrast(1.05) brightness(.85);
       transform:scale(1.02);
     }
-    .card .scrim{
-      position:absolute; inset:0;
-      background:linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.55));
-    }
-    .card .content{
-      position:relative; z-index:1; padding:28px; display:grid; gap:12px;
-    }
-    .hero h1{ margin:0 0 6px; font-size:28px }
+    .card .scrim{ position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.55)); }
+    .card .content{ position:relative; z-index:1; padding:28px; display:grid; gap:12px; }
+    .hero h1{ margin:0 0 6px; font-size:28px; font-weight:800; letter-spacing:.2px }
     .hero p{ margin:8px 0 18px; color:var(--ui-text-muted) }
     .hero .actions{ display:flex; gap:12px; flex-wrap:wrap }
 
@@ -106,10 +98,8 @@
     .bar{ position:relative; height:22px; background:#222; border-radius:6px; overflow:hidden }
     .fill{ height:100% }
     .bar span{ position:absolute; left:8px; top:2px; font-weight:600; text-shadow:0 1px 2px rgba(0,0,0,.6) }
-    .bar .target{
-      position:absolute; top:3px; bottom:3px; width:3px; background:var(--ui-accent); border-radius:2px;
-      box-shadow:0 0 0 1px rgba(0,0,0,.35), 0 0 6px rgba(0,0,0,.25); transform:translateX(-50%); pointer-events:none
-    }
+    .bar .target{ position:absolute; top:3px; bottom:3px; width:3px; background:var(--ui-accent); border-radius:2px;
+                  box-shadow:0 0 0 1px rgba(0,0,0,.35), 0 0 6px rgba(0,0,0,.25); transform:translateX(-50%); pointer-events:none }
     .readout{ display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:space-between;
               background:rgba(0,0,0,.35); padding:10px; border-radius:10px; border:1px solid var(--ui-border) }
     .swatch{ display:inline-block; width:14px; height:14px; border-radius:3px; border:1px solid rgba(255,255,255,.35); margin-right:6px; vertical-align:-2px }
@@ -225,7 +215,7 @@
     </section>
   </main>
 
-  <!-- Paywall overlay (kept; gating moved to Start camera) -->
+  <!-- Paywall (kept; only used when starting the camera) -->
   <div id="paywall" hidden>
     <div class="pw-card" style="max-width:560px;margin:auto;padding:22px;border-radius:16px;background:var(--ui-secondary);border:1px solid var(--ui-border);box-shadow:0 20px 60px rgba(0,0,0,.45)">
       <h2 style="margin:0 0 6px">Unlock Studio</h2>
@@ -243,10 +233,25 @@
   </div>
 
   <script>
-  /* ===== tiny helpers ===== */
+  /* ---------- Small, robust handler so the landing ALWAYS hides ---------- */
+  // Works even if other JS later throws; uses event delegation.
+  document.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'openStudio') {
+      const landing = document.getElementById('landing');
+      const studio  = document.getElementById('studio');
+      document.body.classList.remove('lock');
+      if (studio)  studio.hidden  = false;
+      if (landing) landing.hidden = true;
+      try { studio?.scrollIntoView({behavior:'smooth', block:'start'}); } catch(_){}
+    }
+  });
+  </script>
+
+  <script>
+  /* ===== helpers ===== */
   const $ = sel => document.querySelector(sel);
 
-  /* ===== lock scroll on landing ===== */
+  /* ===== lock scroll on first view ===== */
   document.addEventListener('DOMContentLoaded', ()=>{ document.body.classList.add('lock'); });
 
   /* ===== capture & save ===== */
@@ -277,7 +282,7 @@
   }
   document.getElementById('btnCapture')?.addEventListener('click', saveCapture);
 
-  /* ===== theme (kept) ===== */
+  /* ===== theme ===== */
   function updRange(el){ const min=+el.min||0, max=+el.max||100, val=+el.value||0; el.style.setProperty('--pct', (((val-min)/(max-min))*100)+'%'); }
   function applyTheme(name){
     document.body.classList.remove('theme-magenta-cosmos','theme-cyan-sunrise');
@@ -302,30 +307,21 @@
     pw.hidden=false;
   }
   function hidePaywall(){ const pw=$('#paywall'); pw.hidden=true; if(showPaywall._t) clearInterval(showPaywall._t); }
-  async function ensureEntitled(){
-    if (hasPro()) return true;
-    const ms=getMsLeft();
-    if (ms===-1){ showPaywall('Start your free 3-day trial. '); return false; }
-    if (ms>0){ hidePaywall(); return true; }
-    showPaywall('Your trial ended. '); return false;
-  }
-  $('#btn-start-trial')?.addEventListener('click', ()=>{ if(!localStorage.getItem(TRIAL_KEY)) localStorage.setItem(TRIAL_KEY, Date.now().toString()); hidePaywall(); });
+
+  // Gate on "Start camera" (not on Open studio)
+  document.getElementById('startBtn').addEventListener('click', async ()=>{
+    if (hasPro()) { init(); return; }
+    const ms = getMsLeft();
+    if (ms === -1) { showPaywall('Start your free 3-day trial. '); return; }
+    if (ms > 0)    { hidePaywall(); init(); return; }
+    showPaywall('Your trial ended. ');
+  });
+
+  $('#btn-start-trial')?.addEventListener('click', ()=>{ if(!localStorage.getItem(TRIAL_KEY)) localStorage.setItem(TRIAL_KEY, Date.now().toString()); hidePaywall(); init(); });
   $('#btn-month')?.addEventListener('click', ()=>window.open('https://example.com/monthly','_blank'));
   $('#btn-year') ?.addEventListener('click', ()=>window.open('https://example.com/yearly','_blank'));
   $('#btn-life') ?.addEventListener('click', ()=>window.open('https://example.com/lifetime','_blank'));
-  $('#btn-restore')?.addEventListener('click', ()=>{ const key=prompt('Paste your license / token:'); if(key){ localStorage.setItem(PRO_KEY,key); hidePaywall(); }});
-
-  /* ===== landing → studio (NO paywall gate here) ===== */
-  document.getElementById('openStudio')?.addEventListener('click', async ()=>{
-    document.body.classList.remove('lock');      // unlock scroll
-    const landing=$('#landing'), studio=$('#studio');
-    studio.hidden=false;
-    landing.classList.add('is-hiding');
-    const hide = ()=>{ landing.hidden=true; };
-    landing.addEventListener('transitionend', hide, { once:true });
-    setTimeout(hide, 350); // fallback if transition doesn't fire
-    try{ studio.scrollIntoView({behavior:'smooth', block:'start'}); }catch(_){}
-  });
+  $('#btn-restore')?.addEventListener('click', ()=>{ const key=prompt('Paste your license / token:'); if(key){ localStorage.setItem(PRO_KEY,key); hidePaywall(); init(); }});
 
   /* ===== camera & devices / analysis / overlays ===== */
   const TARGET=[60,30,10], K=3, DOWNSCALE_W=160, EMA=0.35;
@@ -356,16 +352,6 @@
     catch(e){ uiError('Permission/availability error: '+e.message); return; }
     await listDevices(); if(devSel.value) await start(devSel.value);
   }
-
-  // Gate entitlement on "Start camera" (not on Open studio)
-  document.getElementById('startBtn').addEventListener('click', async ()=>{
-    if (!(await ensureEntitled())) return;
-    init();
-  });
-
-  devSel.addEventListener('change',()=>start(devSel.value));
-  inclNeutrals.addEventListener('change',()=>{emaPct=null;});
-  navigator.mediaDevices?.addEventListener?.('devicechange', listDevices);
 
   function rgb2hsv(r,g,b){
     r/=255; g/=255; b/=255;

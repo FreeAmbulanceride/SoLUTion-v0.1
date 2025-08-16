@@ -155,19 +155,21 @@ let emaPct=null;
 let stream=null;
 
 /* ===== Score update mode ===== */
-const scoreUpdateSel = document.getElementById('scoreUpdate');
-let scoreUpdateMode = localStorage.getItem('scoreUpdateMode') || 'frame';
-let lastScoreUpdateTs = 0;   // ms (performance.now())
-let prevScoreInt = null;     // for the 100-point chime you added
+/* ===== Score update mode ===== */
+const scoreUpdateSel   = document.getElementById('scoreUpdate');  // <- id must match your HTML
+let scoreUpdateMode    = localStorage.getItem('scoreUpdateMode') || 'frame';
+let lastScoreUpdateTs  = 0;   // ms (performance.now())
+let prevScoreInt       = null;
 
 if (scoreUpdateSel) {
   scoreUpdateSel.value = scoreUpdateMode;
   scoreUpdateSel.addEventListener('change', (e) => {
-    scoreUpdateMode = e.target.value;
+    scoreUpdateMode   = e.target.value;                 // 'frame' | 'second'
     localStorage.setItem('scoreUpdateMode', scoreUpdateMode);
-    lastScoreUpdateTs = 0;   // reset so the next tick updates immediately
+    lastScoreUpdateTs = 0;                              // force immediate refresh
   });
 }
+
 
 
 function uiError(msg){ errEl.textContent = msg||''; if(msg) console.warn(msg); }

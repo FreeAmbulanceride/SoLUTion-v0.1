@@ -587,14 +587,32 @@ function loop(){
   const vec=sw.map(s=>s.pct); if(!emaPct) emaPct=vec; else emaPct=emaPct.map((p,i)=>p*(1-EMA)+vec[i]*EMA);
 
   bars.innerHTML=''; legend.innerHTML='';
-  const sorted = sw.map((s,i)=>({...s, pct: emaPct[i]}));
-  const totPct = sorted.reduce((a,b)=>a+b.pct,0)||1;
+  const sorted = sw.map((s,i)=> ({...s, pct: emaPct[i]}));
+  const totPct = sorted.reduce((a,b)=>a+b.pct,0) || 1;
+
   sorted.forEach(s=>{
     const pct = s.pct * 100 / totPct;
-    const div=document.createElement('div'); div.className='bar';
-    const fill=document.createElement('div'); fill.className='fill'; fill.style.width=`${pct.toFixed(2)}%`; fill.style.background=`rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})`;
-    const label=document.createElement('span'); const hex='#'+s.rgb.map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
-    label.textContent = `${pct.toFixed(1)}%  ${hex}`; div.appendChild(fill); div.appendChild(label); bars.appendChild(div);
+    const div=document.createElement('div'); 
+    div.className='bar';
+    
+    const fill=document.createElement('div'); 
+    fill.className='fill'; 
+    fill.style.width=`${pct.toFixed(2)}%`; 
+    fill.style.background=`rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})`;
+    
+    const label=document.createElement('span'); 
+    const hex = '#'+s.rgb.map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+    label.textContent = `${pct.toFixed(1)}%  ${hex}`;
+
+    // NEW: target tick at 60 / 30 / 10 for bars 0 / 1 / 2
+  const tick = document.createElement('i');
+  tick.className = 'target';
+  tick.style.left = `${TARGET[i]}%`;          // TARGET = [60,30,10]
+
+  div.appendChild(fill);
+  div.appendChild(label);
+  div.appendChild(tick);                       // <— add the tick
+  bars.appendChild(div);
     const swEl=document.createElement('span'); swEl.className='swatch'; swEl.style.background=`rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})`; legend.appendChild(swEl);
   });
 

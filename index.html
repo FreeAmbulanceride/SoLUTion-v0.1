@@ -200,7 +200,7 @@
         <div class="actions">
           <button id="openStudio" class="btn">OPEN STUDIO</button>
         </div>
-        <p class="small" style="opacity:.85">Camera requires HTTPS or <code>http://localhost</code>. Mobile supported.</p>
+        <p class="small" style="opacity:.85">Requires video source HTTPS or <code>http://localhost</code>. Mobile supported.</p>
       </div>
     </div>
   </section>
@@ -430,7 +430,7 @@ $('#openStudio').addEventListener('click', async ()=>{
 });
 
 /* ========= camera & devices ========= */
-const TARGET=[60,30,10], K=3, DOWNSCALE_W=160, EMA=0.35;
+const TARGET=[60,30,10], K=3, DOWNSCALE_W=160, EMA=0.15;
 const v = $('#v'), cv = $('#c'), bars = $('#bars');
 const legend = $('#legend'), actualEl = $('#actual'), scoreEl = $('#score');
 const devSel = $('#device'), inclNeutrals = $('#inclNeutrals'), errEl = $('#err');

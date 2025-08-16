@@ -154,6 +154,22 @@ const devSel = $('#device'), inclNeutrals = $('#inclNeutrals'), errEl = $('#err'
 let emaPct=null;
 let stream=null;
 
+/* ===== Score update mode ===== */
+const scoreUpdateSel = document.getElementById('scoreUpdate');
+let scoreUpdateMode = localStorage.getItem('scoreUpdateMode') || 'frame';
+let lastScoreUpdateTs = 0;   // ms (performance.now())
+let prevScoreInt = null;     // for the 100-point chime you added
+
+if (scoreUpdateSel) {
+  scoreUpdateSel.value = scoreUpdateMode;
+  scoreUpdateSel.addEventListener('change', (e) => {
+    scoreUpdateMode = e.target.value;
+    localStorage.setItem('scoreUpdateMode', scoreUpdateMode);
+    lastScoreUpdateTs = 0;   // reset so the next tick updates immediately
+  });
+}
+
+
 function uiError(msg){ errEl.textContent = msg||''; if(msg) console.warn(msg); }
 
 /* Smart default: try last used device, else back camera on phones, else any camera */
@@ -436,6 +452,11 @@ function drawPhiMarker(ctx, cx,cy){
 /* =========================
    Analysis loop (60/30/10 + HUD)
 ========================= */
+const scoreUpdateSel = document.getElementById('scoreUpdate');
+let scoreUpdateMode = localStorage.getItem('scoreUpdateMode') || 'frame';
+let lastScoreUpdateTs = 0;
+let prevScoreInt = null;
+
 let lastMean=null;
 function sceneCut(mean, th=12){ if(!lastMean){lastMean=mean;return false;} const d=Math.hypot(mean[0]-lastMean[0],mean[1]-lastMean[1],mean[2]-lastMean[2]); lastMean=mean; return d>th; }
 
@@ -571,15 +592,27 @@ function loop(){
     const swEl=document.createElement('span'); swEl.className='swatch'; swEl.style.background=`rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})`; legend.appendChild(swEl);
   });
 
-  const pcts = sorted.map(s=> s.pct * 100 / totPct);
-  const {score, tag, actual} = grade6010(pcts);
+const pcts = sorted.map(s => (s.pct * 100) / totPct);
+const { score, tag, actual } = grade6010(pcts);
+
+// throttle UI updates
+const now = performance.now();
+const shouldUpdateScore =
+  (scoreUpdateMode === 'frame') || (now - lastScoreUpdateTs >= 1000);
+
+if (shouldUpdateScore) {
   actualEl.textContent = `${actual[0]} / ${actual[1]} / ${actual[2]}`;
-  scoreEl.textContent = score; scoreEl.className = `tag ${tag}`;
-   // celebrate hitting 100 (only on the transition into 100)
-if (prevScoreInt !== 100 && score === 100) {
-  playChime();
+  scoreEl.textContent = String(score);
+  scoreEl.className = `tag ${tag}`;
+
+  // chime only when the *displayed* score hits 100
+  if (typeof playChime === 'function' && prevScoreInt !== 100 && score === 100) {
+    playChime();
+  }
+  prevScoreInt = score;
+  lastScoreUpdateTs = now;
 }
-prevScoreInt = score;
+
 
   // Golden HUD
   if ($('#phiOn').checked){

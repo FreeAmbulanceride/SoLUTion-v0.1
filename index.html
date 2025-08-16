@@ -182,13 +182,7 @@
       <p>Real-time color clustering, ghost overlay for continuity, and Golden Ratio guidance. Built for set-life: fast, visual, brutally honest.</p>
       <div class="actions">
         <button id="openStudio" class="btn">Open Studio</button>
-        <label>Theme
-          <select id="themeSel">
-            <option value="teal-mango" selected>Teal–Mango</option>
-            <option value="magenta-cosmos">Magenta–Cosmos</option>
-            <option value="cyan-sunrise">Cyan–Sunrise</option>
-          </select>
-        </label>
+    
       </div>
       <p class="small" style="opacity:.8">Camera requires HTTPS or <code>http://localhost</code>. Mobile supported.</p>
     </div>
@@ -399,15 +393,61 @@ inclNeutrals.addEventListener('change',()=>{emaPct=null;});
 navigator.mediaDevices?.addEventListener?.('devicechange', listDevices);
 
 /* ========= utilities ========= */
-function rgb2hsv(r,g,b){r/=255;g/=255;b/=255;const max=Math.max(r,g,b),min=Math.min(r,g,b);let h,s,v=max;const d=max-min;s=max===0?0:d/max;
-if(max===min)h=0;else{switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break}h/=6}return[h,s,v]}
-function kmeans(pixels,k=3,maxIter=8){const n=pixels.length/3;const centers=new Array(k).fill(0).map(_=>[0,0,0]);const first=Math.floor(Math.random()*n);centers[0]=[pixels[first*3],pixels[first*3+1],pixels[first*3+2]];
-for(let ci=1;ci<k;ci++){let farIdx=0,farDist=-1;for(let i=0;i<n;i++){const r=pixels[i*3],g=pixels[i*3+1],b=pixels[i*3+2];let dmin=1e9;for(let j=0;j<ci;j++){const dr=r-centers[j][0],dg=g-centers[j][1],db=b-centers[j][2];const d=dr*dr+dg*dg+db*db;if(d<bd){bd=d;best=j}}assign[i]=best}
-if(dmin>farDist){farDist=dmin;farIdx=i}}centers[ci]=[pixels[farIdx*3],pixels[farIdx*3+1],pixels[farIdx*3+2]]}
-const assign=new Int16Array(n);for(let it=0;it<maxIter;it++){for(let i=0;i<n;i++){const r=pixels[i*3],g=pixels[i*3+1],b=pixels[i*3+2];let best=-1,bd=1e9;for(let j=0;j<k;j++){const dr=r-centers[j][0],dg=g-centers[j][1],db=b-centers[j][2];const d=dr*dr+dg*dg+db*db;if(d<bd){bd=d;best=j}}assign[i]=best}
-const sum=centers.map(()=>[0,0,0,0]);for(let i=0;i<n;i++){const a=assign[i];const off=i*3;sum[a][0]+=pixels[off];sum[a][1]+=pixels[off+1];sum[a][2]+=pixels[off+2];sum[a][3]++}
-for(let j=0;j<k;j++){if(sum[j][3]>0){centers[j][0]=sum[j][0]/sum[j][3];centers[j][1]=sum[j][1]/sum[j][3];centers[j][2]=sum[j][2]/sum[j][3]}}}
-const counts=new Array(k).fill(0);for(let i=0;i<n;i++)counts[assign[i]]++;return{centers,counts}}
+function kmeans(pixels, k=3, maxIter=8){
+  const n = pixels.length / 3;
+
+  // Farthest-first seeding (k-means++)
+  const centers = new Array(k).fill(0).map(()=>[0,0,0]);
+  const first = Math.floor(Math.random()*n);
+  centers[0] = [pixels[first*3], pixels[first*3+1], pixels[first*3+2]];
+  for (let ci=1; ci<k; ci++){
+    let farIdx = 0, farDist = -1;
+    for (let i=0; i<n; i++){
+      const r=pixels[i*3], g=pixels[i*3+1], b=pixels[i*3+2];
+      let dmin = Infinity;
+      for (let j=0; j<ci; j++){
+        const dr=r-centers[j][0], dg=g-centers[j][1], db=b-centers[j][2];
+        const d=dr*dr+dg*dg+db*db;
+        if (d<dmin) dmin = d;
+      }
+      if (dmin > farDist){ farDist = dmin; farIdx = i; }
+    }
+    centers[ci] = [pixels[farIdx*3], pixels[farIdx*3+1], pixels[farIdx*3+2]];
+  }
+
+  const assign = new Int16Array(n);
+  for (let it=0; it<maxIter; it++){
+    // Assign
+    for (let i=0; i<n; i++){
+      const r=pixels[i*3], g=pixels[i*3+1], b=pixels[i*3+2];
+      let best=-1, bd=Infinity;
+      for (let j=0; j<k; j++){
+        const dr=r-centers[j][0], dg=g-centers[j][1], db=b-centers[j][2];
+        const d=dr*dr+dg*dg+db*db;
+        if (d<bd){ bd=d; best=j; }
+      }
+      assign[i] = best;
+    }
+    // Update
+    const sum = centers.map(()=>[0,0,0,0]);
+    for (let i=0; i<n; i++){
+      const a=assign[i], off=i*3;
+      sum[a][0]+=pixels[off]; sum[a][1]+=pixels[off+1]; sum[a][2]+=pixels[off+2]; sum[a][3]++;
+    }
+    for (let j=0; j<k; j++){
+      if (sum[j][3]>0){
+        centers[j][0]=sum[j][0]/sum[j][3];
+        centers[j][1]=sum[j][1]/sum[j][3];
+        centers[j][2]=sum[j][2]/sum[j][3];
+      }
+    }
+  }
+
+  const counts = new Array(k).fill(0);
+  for (let i=0; i<n; i++) counts[assign[i]]++;
+  return { centers, counts };
+}
+
 function grade6010(pcts){
   const a=[...pcts].sort((x,y)=>y-x).slice(0,3);
   const diffs=a.map((v,i)=>Math.abs(v-[60,30,10][i]));
@@ -590,7 +630,7 @@ function loop(){
   const sorted = sw.map((s,i)=> ({...s, pct: emaPct[i]}));
   const totPct = sorted.reduce((a,b)=>a+b.pct,0) || 1;
 
-  sorted.forEach(s=>{
+  sorted.forEach((s, i)=>{ 
     const pct = s.pct * 100 / totPct;
     const div=document.createElement('div'); 
     div.className='bar';

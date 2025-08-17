@@ -8,10 +8,64 @@ const PRO_KEY         = 'proEntitlement_v1';
 const LAST_DEVICE_KEY = 'lastVideoDeviceId_v1';
 const THEME_KEY       = 'derivedTheme_v1';
 const SAT_KEY         = 'satCutoff6010';       // slider persistence (0..40 stored)
+// --- bar smoothing / hysteresis ---
+const BAR_SOFT = 1;          // %: if |diff| >= 1% for long enough, update
+const BAR_HARD = 3;          // %: if |diff| >= 3%, update immediately
+const BAR_WAIT_MS = 3000;    // ms: wait this long when in the soft band
+let barNodes = [];           // DOM refs for 3 bars
+const barSticky = Array.from({length:3}, ()=>({ value:0, since:0, init:false }));
 
 /* =========================
    Tiny helpers
 ========================= */
+function ensureBarNodes(){
+  if (barNodes.length) return;
+  for (let i=0;i<3;i++){
+    const div  = document.createElement('div'); div.className='bar';
+    const fill = document.createElement('div'); fill.className='fill';
+    // in case CSS didn’t load, enforce transition here too:
+    fill.style.transition = 'width .35s ease';
+    const label = document.createElement('span');
+    const tick  = document.createElement('i'); tick.className='target';
+    tick.style.left = `${TARGET[i]}%`;
+    div.appendChild(fill); div.appendChild(label); div.appendChild(tick);
+    bars.appendChild(div);
+    barNodes.push({wrap:div, fill, label, tick});
+  }
+}
+
+function stickyUpdate(i, measuredPct, now){
+  const s = barSticky[i];
+  if (!s.init || !isFinite(s.value)){ s.value = measuredPct; s.init = true; s.since = 0; return s.value; }
+  const diff = measuredPct - s.value;
+  const ad   = Math.abs(diff);
+  if (ad >= BAR_HARD){
+    s.value = measuredPct; s.since = 0;
+  } else if (ad >= BAR_SOFT){
+    if (!s.since) s.since = now;
+    if (now - s.since >= BAR_WAIT_MS){ s.value = measuredPct; s.since = 0; }
+  } else {
+    s.since = 0; // back inside deadband
+  }
+  return s.value;
+}
+
+function renderBars(sorted, totPct, now){
+  ensureBarNodes();
+  for (let i=0;i<3;i++){
+    const seg = sorted[i];
+    const measured = seg ? (seg.pct * 100 / totPct) : 0;
+    const display  = stickyUpdate(i, measured, now);
+    const rgb = seg ? seg.rgb : [60,60,60];
+    const hex = '#'+rgb.map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+
+    const n = barNodes[i];
+    n.fill.style.width = `${display.toFixed(1)}%`;
+    n.fill.style.background = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+    n.label.textContent = `${display.toFixed(1)}%  ${hex}`;
+  }
+}
+
 const $ = (sel) => document.querySelector(sel);
 
 function updRange(el){
@@ -605,6 +659,10 @@ function grade6010(pcts){
 }
 
 function loop(){
+   // ---- UI bars (sticky + animated) ----
+const now = performance.now();      // put this near top of loop
+renderBars(sorted, totPct, now);
+
   if (v.videoWidth===0){ requestAnimationFrame(loop); return; }
 
   drawGhost();
@@ -660,7 +718,7 @@ function loop(){
   const vec=sw.map(s=>s.pct); if(!emaPct) emaPct=vec; else emaPct=emaPct.map((p,i)=>p*(1-EMA)+vec[i]*EMA);
 
   // bars
-  bars.innerHTML=''; legend.innerHTML='';
+  
   const sorted = sw.map((s,i)=> ({...s, pct: emaPct[i]}));
   const totPct = sorted.reduce((a,b)=>a+b.pct,0) || 1;
 

@@ -1,12 +1,13 @@
 /* =========================
    Config
 ========================= */
-const ENABLE_PAYWALL = true;            // set true to actually show the paywall
-const TRIAL_DAYS     = 3;
-const TRIAL_KEY      = 'trialStartedAt_v1';
-const PRO_KEY        = 'proEntitlement_v1';
-const LAST_DEVICE_KEY= 'lastVideoDeviceId_v1';
-const THEME_KEY      = 'derivedTheme_v1';
+const ENABLE_PAYWALL  = true;    // show soft paywall if true
+const TRIAL_DAYS      = 3;
+const TRIAL_KEY       = 'trialStartedAt_v1';
+const PRO_KEY         = 'proEntitlement_v1';
+const LAST_DEVICE_KEY = 'lastVideoDeviceId_v1';
+const THEME_KEY       = 'derivedTheme_v1';
+const SAT_KEY         = 'satCutoff6010';       // slider persistence (0..40 stored)
 
 /* =========================
    Tiny helpers
@@ -19,7 +20,6 @@ function updRange(el){
   el.style.setProperty('--pct', pct + '%');
 }
 
-function clamp01(x){ return Math.max(0, Math.min(1, x)); }
 function rgb2hsv(r,g,b){
   r/=255; g/=255; b/=255;
   const max=Math.max(r,g,b), min=Math.min(r,g,b);
@@ -47,7 +47,7 @@ function ensureAudio(){
   try{
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
-  }catch(_){ /* ignore */ }
+  }catch(_){}
 }
 function playChime(){
   try{
@@ -67,7 +67,7 @@ function playChime(){
 }
 
 /* =========================
-   THEME: load / save / derive
+   Theme: load / derive from hero
 ========================= */
 function applyThemeVars(theme){
   const root = document.documentElement;
@@ -79,53 +79,44 @@ function applyThemeVars(theme){
   root.style.setProperty('--ui-border',    theme.border || 'rgba(255,255,255,0.10)');
   root.style.setProperty('--ui-surface',   theme.surface || 'rgba(255,255,255,0.06)');
 
-  // ring based on accent with alpha
   try{
-    const a = theme.accent.startsWith('#')
-      ? theme.accent.match(/[0-9a-f]{2}/gi).map(h=>parseInt(h,16))
-      : null;
-    const ring = a ? `rgba(${a[0]},${a[1]},${a[2]},0.55)` : 'rgba(245,158,11,0.55)';
-    root.style.setProperty('--ui-ring', ring);
-  }catch(_){}
+    const hex = theme.accent.replace('#','');
+    const r = parseInt(hex.slice(0,2),16);
+    const g = parseInt(hex.slice(2,4),16);
+    const b = parseInt(hex.slice(4,6),16);
+    root.style.setProperty('--ui-ring', `rgba(${r},${g},${b},0.55)`);
+  }catch(_){ root.style.setProperty('--ui-ring','rgba(245,158,11,0.55)'); }
 }
 function restoreSavedThemeIfAny(){
   try{
     const raw = localStorage.getItem(THEME_KEY);
     if (!raw) return false;
     const theme = JSON.parse(raw);
-    if (theme && theme.primary && theme.secondary && theme.accent){
-      applyThemeVars(theme);
-      return true;
+    if (theme?.primary && theme?.secondary && theme?.accent){
+      applyThemeVars(theme); return true;
     }
   }catch(_){}
   return false;
 }
-function saveTheme(theme){
-  try{ localStorage.setItem(THEME_KEY, JSON.stringify(theme)); }catch(_){}
-}
+function saveTheme(theme){ try{ localStorage.setItem(THEME_KEY, JSON.stringify(theme)); }catch(_){ } }
 
-// robust hero URL sniffing
 function getHeroImageURL(){
   const bg   = document.querySelector('#landing .bg');
   const card = document.querySelector('#landing .card');
   if (!bg) return null;
-
-  // CSS var --hero is the most reliable
   const varVal =
     getComputedStyle(bg).getPropertyValue('--hero').trim() ||
     (card ? getComputedStyle(card).getPropertyValue('--hero').trim() : '');
-  const fromVar = varVal && varVal.match(/url\((.*)\)/i);
-  if (fromVar) return new URL(fromVar[1].replace(/^["']|["']$/g,''), location.href).href;
+  const mVar = varVal && varVal.match(/url\((.*)\)/i);
+  if (mVar) return new URL(mVar[1].replace(/^["']|["']$/g,''), location.href).href;
 
-  // fallback to background-image
   const bi = getComputedStyle(bg).backgroundImage;
-  const m  = bi && bi.match(/url\((.*)\)/i);
+  const m = bi && bi.match(/url\((.*)\)/i);
   if (m) return new URL(m[1].replace(/^["']|["']$/g,''), location.href).href;
-
   return null;
 }
 
-// simple k-means (reused later too)
+// shared kmeans (used here and in analysis)
 function kmeans(pixels, k=3, maxIter=8){
   const n = pixels.length / 3;
   const centers = new Array(k).fill(0).map(()=>[0,0,0]);
@@ -173,15 +164,10 @@ function kmeans(pixels, k=3, maxIter=8){
   return { centers, counts };
 }
 
-// derive palette from image
 async function deriveThemeFromImageUrl(url){
   const img = new Image();
-  img.crossOrigin = 'anonymous'; // ok for same-origin; helps if CORS enabled
-  await new Promise((res, rej)=>{
-    img.onload = res;
-    img.onerror = ()=>rej(new Error('Image load failed'));
-    img.src = url;
-  });
+  img.crossOrigin = 'anonymous';
+  await new Promise((res, rej)=>{ img.onload=res; img.onerror=()=>rej(new Error('Image load failed')); img.src=url; });
 
   const W = 128, H = Math.max(64, Math.round((img.naturalHeight||img.height) * (W/(img.naturalWidth||img.width))));
   const c = document.createElement('canvas'); c.width=W; c.height=H;
@@ -190,32 +176,26 @@ async function deriveThemeFromImageUrl(url){
 
   let data;
   try{ data = ctx.getImageData(0,0,W,H).data; }
-  catch(e){ throw new Error('Canvas tainted; cannot sample colors.'); }
+  catch(e){ console.warn('Canvas tainted; cannot sample colors.'); return; }
 
-  // build sample buffer (skip transparent/very dark borders)
   const buf=[];
   for (let i=0; i<data.length; i+=16){
-    const a=data[i+3];
-    if (a<200) continue;
-    const r=data[i], g=data[i+1], b=data[i+2];
-    buf.push(r,g,b);
+    const a=data[i+3]; if (a<200) continue;
+    buf.push(data[i], data[i+1], data[i+2]);
   }
   if (!buf.length) return;
 
   const { centers, counts } = kmeans(new Float32Array(buf), 4, 8);
-  const swatches = counts.map((c,i)=>{
+  const sw = counts.map((c,i)=>{
     const rgb = centers[i].map(x=>Math.max(0,Math.min(255,Math.round(x))));
     const [h,s,v] = rgb2hsv(rgb[0],rgb[1],rgb[2]);
     const lum = 0.2126*rgb[0] + 0.7152*rgb[1] + 0.0722*rgb[2];
     return { rgb, count:c, sat:s, val:v, lum };
   }).sort((a,b)=>b.count-a.count);
 
-  // choose roles
-  const primary   = swatches.slice().sort((a,b)=>a.lum-b.lum)[0]        || swatches[0];
-  const accent    = swatches.slice().sort((a,b)=>(b.sat*b.val)-(a.sat*a.val))[0] || swatches[0];
-  // secondary: mid-luma color not too close to primary
-  const secPool   = swatches.slice().sort((a,b)=>Math.abs((a.lum)-(b.lum)) - Math.abs((a.lum)-(primary.lum)));
-  const secondary = secPool.find(s=>Math.abs(s.lum-primary.lum)>20) || swatches[1] || swatches[0];
+  const primary   = sw.slice().sort((a,b)=>a.lum-b.lum)[0] || sw[0];
+  const accent    = sw.slice().sort((a,b)=>(b.sat*b.val)-(a.sat*a.val))[0] || sw[0];
+  const secondary = sw.find(s=>Math.abs(s.lum-primary.lum)>20) || sw[1] || sw[0];
 
   const theme = {
     primary:   rgbHex(primary.rgb),
@@ -229,86 +209,14 @@ async function deriveThemeFromImageUrl(url){
   applyThemeVars(theme);
   saveTheme(theme);
 }
-
-// wrapper you can call any time
 async function deriveThemeFromHeroNow(){
   const url = getHeroImageURL();
-  if (!url){ console.warn('No hero image URL found'); return; }
-  try { await deriveThemeFromImageUrl(url); }
-  catch(e){ console.warn('Theme derive failed:', e.message||e); }
+  if (!url) return;
+  try{ await deriveThemeFromImageUrl(url); }catch(e){ console.warn('Theme derive failed:', e); }
 }
 
 /* =========================
-   Landing → Studio
-========================= */
-document.addEventListener('DOMContentLoaded', () => {
-  // lock scroll on landing
-  document.body.classList.add('lock');
-
-  // range rails sync
-  document.querySelectorAll('input[type="range"]').forEach(el=>{
-    updRange(el);
-    el.addEventListener('input', ()=>updRange(el));
-  });
-
-  // Defaults
-  $('#grid').checked = false;
-  $('#phiOn').checked = false;
-  $('#phiSpiral').value = 'off';
-
-  // Open Studio
-  $('#openStudio')?.addEventListener('click', async ()=>{
-    ensureAudio();
-    if (!(await ensureEntitled())) return;
-    showStudio();
-  });
-
-  // Start camera button (toolbar)
-  $('#startBtn')?.addEventListener('click', ()=>{
-    ensureAudio();
-    init();
-  });
-
-  // overlay mode → show/hide wipe slider
-  $('#overlayMode')?.addEventListener('change', ()=>{
-    $('#wipeWrap').style.display = $('#overlayMode').value==='wipe' ? 'inline-block' : 'none';
-  });
-
-  // Capture
-  $('#btnCapture')?.addEventListener('click', saveCapture);
-
-  // Ref still handlers
-  $('#refUpload')?.addEventListener('change', onUploadRef);
-  $('#grabRef')?.addEventListener('click', grabRefFromVideo);
-
-  // Device changes
-  navigator.mediaDevices?.addEventListener?.('devicechange', listDevices);
-
-  // Score update mode (per frame/per second)
-  initScoreUpdateMode();
-});
-
-// After everything (images/styles) finishes loading, derive theme once if none saved
-window.addEventListener('load', ()=>{
-  if (!restoreSavedThemeIfAny()){
-    deriveThemeFromHeroNow();
-  }
-}, { once:true });
-
-/* Show studio and hide landing with fade */
-function showStudio(){
-  const landing = $('#landing');
-  const studio  = $('#studio');
-  document.body.classList.remove('lock'); // allow scroll in studio
-  studio.hidden = false;
-  init().catch(()=>{});
-  landing.classList.add('is-hiding');
-  landing.addEventListener('transitionend', ()=>{ landing.hidden = true; }, { once:true });
-  try{ studio.scrollIntoView({behavior:'smooth', block:'start'}); }catch(_){}
-}
-
-/* =========================
-   Optional paywall
+   Paywall (soft)
 ========================= */
 function getMsLeft(){
   const started = +localStorage.getItem(TRIAL_KEY);
@@ -351,46 +259,17 @@ $('#btn-restore')?.addEventListener('click', ()=>{
 /* =========================
    Camera & devices
 ========================= */
-const TARGET=[60,30,10], K=3, DOWNSCALE_W=320, EMA=0.5;
+const TARGET=[60,30,10], K=3, DOWNSCALE_W=320, EMA=0.35;
 $('#kval') && ($('#kval').textContent=K);
 
 const v=$('#v'), cv=$('#c'), bars=$('#bars');
 const legend=$('#legend'), actualEl=$('#actual'), scoreEl=$('#score');
 const devSel=$('#device'), inclNeutrals=$('#inclNeutrals'), errEl=$('#err');
+
 let emaPct=null, stream=null;
 
 function uiError(msg){ errEl.textContent = msg||''; if(msg) console.warn(msg); }
 
-/* Smart default: try last used device, else back camera on phones, else any camera */
-async function init(){
-  try{
-    await ensurePermissionPriming();
-    await listDevices();
-
-    const lastId = localStorage.getItem(LAST_DEVICE_KEY);
-    const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    let chosenId = devSel.value;
-
-    if (lastId && [...devSel.options].some(o=>o.value===lastId)){
-      chosenId = lastId; devSel.value = lastId;
-    } else if (mobile){
-      const backOpt = [...devSel.options].find(o=>/back|rear|environment/i.test(o.textContent));
-      if (backOpt){ chosenId = backOpt.value; devSel.value = backOpt.value; }
-    }
-
-    if (chosenId){
-      await start({ deviceId: { exact: chosenId } });
-    } else if (mobile){
-      await start({ facingMode: { exact:'environment' } })
-        .catch(()=>start({ facingMode:'environment' })
-        .catch(()=>start(true)));
-    } else {
-      await start(true);
-    }
-  }catch(e){
-    uiError('Permission/availability error: '+(e.message||e));
-  }
-}
 async function ensurePermissionPriming(){
   const labelsKnown = (await navigator.mediaDevices.enumerateDevices())
     .some(d=>d.kind==='videoinput' && d.label);
@@ -422,10 +301,38 @@ async function start(videoConstraints){
         devSel.value = settings.deviceId;
       }
     }catch(_){}
-    // loop starts on 'loadeddata'
   }catch(e){
     uiError('Failed to start camera: '+e.message);
     throw e;
+  }
+}
+async function init(){
+  try{
+    await ensurePermissionPriming();
+    await listDevices();
+
+    const lastId = localStorage.getItem(LAST_DEVICE_KEY);
+    const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    let chosenId = devSel.value;
+
+    if (lastId && [...devSel.options].some(o=>o.value===lastId)){
+      chosenId = lastId; devSel.value = lastId;
+    } else if (mobile){
+      const backOpt = [...devSel.options].find(o=>/back|rear|environment/i.test(o.textContent));
+      if (backOpt){ chosenId = backOpt.value; devSel.value = backOpt.value; }
+    }
+
+    if (chosenId){
+      await start({ deviceId: { exact: chosenId } });
+    } else if (mobile){
+      await start({ facingMode: { exact:'environment' } })
+        .catch(()=>start({ facingMode:'environment' })
+        .catch(()=>start(true)));
+    } else {
+      await start(true);
+    }
+  }catch(e){
+    uiError('Permission/availability error: '+(e.message||e));
   }
 }
 devSel?.addEventListener('change', async ()=>{
@@ -643,7 +550,7 @@ function drawPhiMarker(ctx,cx,cy){
    Score update throttle
 ========================= */
 let scoreUpdateMode   = localStorage.getItem('scoreUpdateMode') || 'frame'; // 'frame'|'second'
-let lastScoreUpdateTs = 0;   // ms
+let lastScoreUpdateTs = 0;
 let prevScoreInt      = null;
 
 function initScoreUpdateMode(){
@@ -653,8 +560,31 @@ function initScoreUpdateMode(){
   scoreUpdateSel.addEventListener('change', (e)=>{
     scoreUpdateMode   = e.target.value;
     localStorage.setItem('scoreUpdateMode', scoreUpdateMode);
-    lastScoreUpdateTs = 0; // force immediate update next tick
+    lastScoreUpdateTs = 0; // force immediate refresh
   });
+}
+
+/* =========================
+   Saturation cutoff UI
+========================= */
+const satCutoffEl  = $('#satCutoff');    // <input type="range" min="0" max="40">
+const satCutoffVal = $('#satCutoffVal'); // live text (“0.12”)
+
+function setSatUIFromValue(val01){
+  if (!satCutoffEl) return;
+  const v = Math.round(val01 * 100);     // 0..40 domain if you cap in HTML
+  satCutoffEl.value = String(v);
+  updRange(satCutoffEl);
+  if (satCutoffVal) satCutoffVal.textContent = (v/100).toFixed(2);
+}
+function currentSatCutoff(){
+  if (inclNeutrals?.checked) return 0;   // override: include neutrals
+  const v = +satCutoffEl?.value || 12;   // default 0.12
+  return Math.max(0, Math.min(0.99, v/100));
+}
+function refreshSatDisabledState(){
+  if (!satCutoffEl) return;
+  satCutoffEl.disabled = !!inclNeutrals?.checked;
 }
 
 /* =========================
@@ -662,8 +592,17 @@ function initScoreUpdateMode(){
 ========================= */
 let lastMean=null;
 function sceneCut(mean, th=12){ if(!lastMean){lastMean=mean;return false;} const d=Math.hypot(mean[0]-lastMean[0],mean[1]-lastMean[1],mean[2]-lastMean[2]); lastMean=mean; return d>th; }
+function kmeansFrame(pixels, k=3, maxIter=8){ return kmeans(pixels,k,maxIter); }
 
-function kmeansFrame(pixels, k=3, maxIter=8){ return kmeans(pixels,k,maxIter); } // alias
+function grade6010(pcts){
+  const a=[...pcts].sort((x,y)=>y-x).slice(0,3);
+  const diffs=a.map((v,i)=>Math.abs(v-[60,30,10][i]));
+  const weights=[0.5,0.35,0.15];
+  const penalty=diffs.reduce((acc,d,i)=>acc+weights[i]*Math.min(1,d/30),0);
+  const score=Math.max(0,100*(1-penalty));
+  let tag='warn'; if(score>=85) tag='pass'; else if(score<60) tag='fail';
+  return {score:Math.round(score), tag, actual:a.map(v=>Math.round(v))};
+}
 
 function loop(){
   if (v.videoWidth===0){ requestAnimationFrame(loop); return; }
@@ -682,12 +621,13 @@ function loop(){
   let r=0,g=0,b=0,cnt=0; for(let i=0;i<data.length;i+=32){ r+=data[i]; g+=data[i+1]; b+=data[i+2]; cnt++; }
   const mean=[r/cnt,g/cnt,b/cnt]; if (sceneCut(mean)) emaPct=null;
 
-  // sample pixels (filtering neutrals optional)
+  // sample pixels with dynamic saturation cutoff
+  const satCut = currentSatCutoff();
   const step=12, buf=[];
   for(let i=0;i<data.length;i+=step){
     const R=data[i],G=data[i+1],B=data[i+2];
     const [,sat]=rgb2hsv(R,G,B);
-    if (inclNeutrals.checked || sat>=0.12) buf.push(R,G,B);
+    if (inclNeutrals.checked || sat>=satCut) buf.push(R,G,B);
   }
   if (!buf.length){ requestAnimationFrame(loop); return; }
 
@@ -699,10 +639,10 @@ function loop(){
     return { rgb:[R,G,B], pct:100*c/total };
   }).sort((a,b)=>b.pct-a.pct).slice(0,3);
 
-  // exponential moving average for stability
+  // EMA smoothing
   const vec=sw.map(s=>s.pct); if(!emaPct) emaPct=vec; else emaPct=emaPct.map((p,i)=>p*(1-EMA)+vec[i]*EMA);
 
-  // UI bars
+  // bars
   bars.innerHTML=''; legend.innerHTML='';
   const sorted = sw.map((s,i)=> ({...s, pct: emaPct[i]}));
   const totPct = sorted.reduce((a,b)=>a+b.pct,0) || 1;
@@ -728,8 +668,7 @@ function loop(){
   const {score, tag, actual} = grade6010(pcts);
 
   const now = performance.now();
-  const shouldUpdateScore =
-    (scoreUpdateMode === 'frame') || (now - lastScoreUpdateTs >= 1000);
+  const shouldUpdateScore = (scoreUpdateMode === 'frame') || (now - lastScoreUpdateTs >= 1000);
 
   if (shouldUpdateScore) {
     actualEl.textContent = `${actual[0]} / ${actual[1]} / ${actual[2]}`;
@@ -765,14 +704,80 @@ function loop(){
 }
 v.addEventListener('loadeddata', loop);
 
-function grade6010(pcts){
-  const a=[...pcts].sort((x,y)=>y-x).slice(0,3);
-  const diffs=a.map((v,i)=>Math.abs(v-[60,30,10][i]));
-  const weights=[0.5,0.35,0.15];
-  const penalty=diffs.reduce((acc,d,i)=>acc+weights[i]*Math.min(1,d/30),0);
-  const score=Math.max(0,100*(1-penalty));
-  let tag='warn'; if(score>=85) tag='pass'; else if(score<60) tag='fail';
-  return {score:Math.round(score), tag, actual:a.map(v=>Math.round(v))};
-}
+/* =========================
+   Landing → Studio wiring
+========================= */
+document.addEventListener('DOMContentLoaded', () => {
+  // lock scroll on landing
+  document.body.classList.add('lock');
 
+  // sync range rails
+  document.querySelectorAll('input[type="range"]').forEach(el=>{
+    updRange(el);
+    el.addEventListener('input', ()=>updRange(el));
+  });
 
+  // defaults
+  $('#grid').checked = false;
+  $('#phiOn').checked = false;
+  $('#phiSpiral').value = 'off';
+
+  // saturation UI init
+  const savedSat = localStorage.getItem(SAT_KEY);
+  setSatUIFromValue(savedSat != null ? (+savedSat)/100 : 0.12);
+  refreshSatDisabledState();
+  satCutoffEl?.addEventListener('input', ()=>{
+    const v = +satCutoffEl.value;
+    if (satCutoffVal) satCutoffVal.textContent = (v/100).toFixed(2);
+    updRange(satCutoffEl);
+  });
+  satCutoffEl?.addEventListener('change', ()=>{
+    localStorage.setItem(SAT_KEY, String(+satCutoffEl.value));
+    emaPct = null; // immediate response to new cutoff
+  });
+  inclNeutrals?.addEventListener('change', ()=>{
+    refreshSatDisabledState();
+    emaPct = null;
+  });
+
+  // Open Studio
+  $('#openStudio')?.addEventListener('click', async ()=>{
+    ensureAudio();
+    if (!(await ensureEntitled())) return;
+    const landing = $('#landing');
+    const studio  = $('#studio');
+    document.body.classList.remove('lock');
+    studio.hidden = false;
+    init().catch(()=>{});
+    landing.classList.add('is-hiding');
+    landing.addEventListener('transitionend', ()=>{ landing.hidden = true; }, { once:true });
+    try{ studio.scrollIntoView({behavior:'smooth', block:'start'}); }catch(_){}
+  });
+
+  // Start camera
+  $('#startBtn')?.addEventListener('click', ()=>{
+    ensureAudio();
+    init();
+  });
+
+  // overlay mode → show/hide wipe slider
+  $('#overlayMode')?.addEventListener('change', ()=>{
+    $('#wipeWrap').style.display = $('#overlayMode').value==='wipe' ? 'inline-block' : 'none';
+  });
+
+  // capture + ref still
+  $('#btnCapture')?.addEventListener('click', saveCapture);
+  $('#refUpload')?.addEventListener('change', onUploadRef);
+  $('#grabRef')?.addEventListener('click', grabRefFromVideo);
+
+  // device changes
+  navigator.mediaDevices?.addEventListener?.('devicechange', listDevices);
+
+  // score throttle
+  initScoreUpdateMode();
+});
+
+// derive theme after full load if none saved
+window.addEventListener('load', ()=>{
+  if (!restoreSavedThemeIfAny()) deriveThemeFromHeroNow();
+}, { once:true });

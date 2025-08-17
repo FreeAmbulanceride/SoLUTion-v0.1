@@ -43,6 +43,14 @@ Hit the 60/30/10 balance with live bars and a running accuracy score, line up sh
     <!-- Studio -->
     <main id="studio" hidden>
       <header class="toolbar">
+        <div class="group" id="modeGroup">
+  <label>Mode</label>
+  <select id="uiMode">
+    <option value="simple">Simple</option>
+    <option value="pro">Pro</option>
+  </select>
+</div>
+
         <button id="startBtn" class="btn">Start Camera</button>
         <label>Camera <select id="device"></select></label>
         <span id="err" role="status" aria-live="polite"></span>

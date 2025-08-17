@@ -609,27 +609,44 @@ function loop(){
 
   drawGhost();
 
-  const scaleX = DOWNSCALE_W / v.videoWidth;
+    const scaleX = DOWNSCALE_W / v.videoWidth;
   const w = DOWNSCALE_W, h = Math.round(v.videoHeight * scaleX);
-  cv.width = w; cv.height = h;
-  const ctx = cv.getContext('2d',{willReadFrequently:true});
+  cv.width = w; 
+  cv.height = h;
+
+  // ⬇️ REPLACE your existing ctx/drawImage/getImageData + sampling code with this:
+  const ctx = cv.getContext('2d', { willReadFrequently:true });
+  ctx.filter = 'blur(1px)';               // tiny denoise
   ctx.drawImage(v, 0, 0, w, h);
+  ctx.filter = 'none';
+
   const imgData = ctx.getImageData(0,0,w,h);
-  const data = imgData.data;
+  const data    = imgData.data;
 
-  // mean for scene cut
-  let r=0,g=0,b=0,cnt=0; for(let i=0;i<data.length;i+=32){ r+=data[i]; g+=data[i+1]; b+=data[i+2]; cnt++; }
-  const mean=[r/cnt,g/cnt,b/cnt]; if (sceneCut(mean)) emaPct=null;
+  // sparse mean for scene-change detection (keep this if you had it)
+  let r=0,g=0,b=0,cnt=0;
+  for (let i=0;i<data.length;i+=32){ r+=data[i]; g+=data[i+1]; b+=data[i+2]; cnt++; }
+  const mean=[r/cnt,g/cnt,b/cnt];
+  if (sceneCut(mean)) emaPct=null;
 
-  // sample pixels with dynamic saturation cutoff
-  const satCut = currentSatCutoff();
-  const step=12, buf=[];
-  for(let i=0;i<data.length;i+=step){
-    const R=data[i],G=data[i+1],B=data[i+2];
-    const [,sat]=rgb2hsv(R,G,B);
-    if (inclNeutrals.checked || sat>=satCut) buf.push(R,G,B);
+  // sample pixels with saturation/brightness thresholds
+  const step = 12;
+  const buf  = [];
+  const minSat = currentSatCutoff();  // from the slider (0..0.40), 0 if "include neutrals"
+  const minV   = 0.08;                // ignore very dark pixels
+
+  for (let i = 0; i < data.length; i += step){
+    const R = data[i], G = data[i+1], B = data[i+2];
+    const [, s, v] = rgb2hsv(R, G, B);
+    if ((inclNeutrals.checked || s >= minSat) && v >= minV){
+      buf.push(R, G, B);
+    }
   }
   if (!buf.length){ requestAnimationFrame(loop); return; }
+
+  
+  // const arr = new Float32Array(buf); const { centers, counts } = kmeans(...);
+
 
   // k-means, sorted by share
   const arr=new Float32Array(buf); const { centers, counts } = kmeansFrame(arr, K, 7);

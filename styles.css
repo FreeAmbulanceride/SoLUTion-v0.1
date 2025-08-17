@@ -178,3 +178,22 @@ canvas.hidden{ display:none }
 @media (max-width: 900px) and (orientation: landscape){
   #stage{ min-height: calc(100dvh - 8px) }
 }
+
+/* ——— Simple vs Pro ——— */
+body.simple header.toolbar .pro-only { display: none !important; }
+
+#modeGroup select {
+  min-width: 120px;
+}
+
+/* Friendlier tap targets & spacing */
+header.toolbar { gap: 14px; }
+.group { gap: 12px; padding: 10px 12px; }
+.group label { font-weight: 600; }
+
+button.btn, .btn, select, input[type="range"] {
+  font-size: 15px;
+}
+
+/* Smoother bars by default (JS also sets a fallback) */
+.bar .fill { transition: width .35s ease; }

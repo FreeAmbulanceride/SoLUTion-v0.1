@@ -15,6 +15,8 @@ const BAR_WAIT_MS = 3000;    // ms: wait this long when in the soft band
 let barNodes = [];           // DOM refs for 3 bars
 let lastLegendTs = 0;
 const barSticky = Array.from({length:3}, ()=>({ value:0, since:0, init:false }));
+const INCL_NEUTRALS_KEY = 'inclNeutrals6010';
+
 
 /* =========================
    Tiny helpers
@@ -625,6 +627,12 @@ function initScoreUpdateMode(){
 const satCutoffEl  = $('#satCutoff');    // <input type="range" min="0" max="40">
 const satCutoffVal = $('#satCutoffVal'); // live text (“0.12”)
 
+// Include neutrals default/persist
+const savedIncl = localStorage.getItem(INCL_NEUTRALS_KEY);
+// default OFF if no saved value
+inclNeutrals.checked = savedIncl ? (savedIncl === '1') : false;
+
+
 function setSatUIFromValue(val01){
   if (!satCutoffEl) return;
   const v = Math.round(val01 * 100);     // 0..40 domain if you cap in HTML
@@ -806,10 +814,11 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem(SAT_KEY, String(+satCutoffEl.value));
     emaPct = null; // immediate response to new cutoff
   });
-  inclNeutrals?.addEventListener('change', ()=>{
-    refreshSatDisabledState();
-    emaPct = null;
-  });
+inclNeutrals?.addEventListener('change', ()=>{
+  localStorage.setItem(INCL_NEUTRALS_KEY, inclNeutrals.checked ? '1' : '0');
+  refreshSatDisabledState();
+  emaPct = null; // re-warm smoothing after a policy change
+});
 
   // Open Studio
   $('#openStudio')?.addEventListener('click', async ()=>{

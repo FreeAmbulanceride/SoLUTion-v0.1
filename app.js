@@ -13,6 +13,7 @@ const BAR_SOFT = 1;          // %: if |diff| >= 1% for long enough, update
 const BAR_HARD = 3;          // %: if |diff| >= 3%, update immediately
 const BAR_WAIT_MS = 3000;    // ms: wait this long when in the soft band
 let barNodes = [];           // DOM refs for 3 bars
+let lastLegendTs = 0;
 const barSticky = Array.from({length:3}, ()=>({ value:0, since:0, init:false }));
 
 /* =========================
@@ -659,29 +660,25 @@ function grade6010(pcts){
 }
 
 function loop(){
-   // ---- UI bars (sticky + animated) ----
-const now = performance.now();      // put this near top of loop
-renderBars(sorted, totPct, now);
-
-  if (v.videoWidth===0){ requestAnimationFrame(loop); return; }
+  if (v.videoWidth === 0){ requestAnimationFrame(loop); return; }
 
   drawGhost();
 
-    const scaleX = DOWNSCALE_W / v.videoWidth;
+  const scaleX = DOWNSCALE_W / v.videoWidth;
   const w = DOWNSCALE_W, h = Math.round(v.videoHeight * scaleX);
   cv.width = w; 
   cv.height = h;
 
-  // ⬇️ REPLACE your existing ctx/drawImage/getImageData + sampling code with this:
+  // draw the small frame with tiny blur (denoise)
   const ctx = cv.getContext('2d', { willReadFrequently:true });
-  ctx.filter = 'blur(1px)';               // tiny denoise
+  ctx.filter = 'blur(1px)';
   ctx.drawImage(v, 0, 0, w, h);
   ctx.filter = 'none';
 
   const imgData = ctx.getImageData(0,0,w,h);
   const data    = imgData.data;
 
-  // sparse mean for scene-change detection (keep this if you had it)
+  // sparse mean for scene-change detection
   let r=0,g=0,b=0,cnt=0;
   for (let i=0;i<data.length;i+=32){ r+=data[i]; g+=data[i+1]; b+=data[i+2]; cnt++; }
   const mean=[r/cnt,g/cnt,b/cnt];
@@ -690,7 +687,7 @@ renderBars(sorted, totPct, now);
   // sample pixels with saturation/brightness thresholds
   const step = 12;
   const buf  = [];
-  const minSat = currentSatCutoff();  // from the slider (0..0.40), 0 if "include neutrals"
+  const minSat = currentSatCutoff();  // 0..0.40 from slider (0 if "include neutrals")
   const minV   = 0.08;                // ignore very dark pixels
 
   for (let i = 0; i < data.length; i += step){
@@ -702,49 +699,47 @@ renderBars(sorted, totPct, now);
   }
   if (!buf.length){ requestAnimationFrame(loop); return; }
 
-  
-  // const arr = new Float32Array(buf); const { centers, counts } = kmeans(...);
-
-
   // k-means, sorted by share
-  const arr=new Float32Array(buf); const { centers, counts } = kmeansFrame(arr, K, 7);
-  const total=counts.reduce((a,b)=>a+b,0)||1;
+  const arr = new Float32Array(buf);
+  const { centers, counts } = kmeansFrame(arr, K, 7);
+  const total = counts.reduce((a,b)=>a+b,0) || 1;
   const sw = counts.map((c,i)=>{
     const [R,G,B]=centers[i].map(x=>Math.max(0,Math.min(255,Math.round(x))));
     return { rgb:[R,G,B], pct:100*c/total };
   }).sort((a,b)=>b.pct-a.pct).slice(0,3);
 
   // EMA smoothing
-  const vec=sw.map(s=>s.pct); if(!emaPct) emaPct=vec; else emaPct=emaPct.map((p,i)=>p*(1-EMA)+vec[i]*EMA);
+  const vec = sw.map(s=>s.pct);
+  if(!emaPct) emaPct = vec; else emaPct = emaPct.map((p,i)=>p*(1-EMA)+vec[i]*EMA);
 
-  // bars
-  
   const sorted = sw.map((s,i)=> ({...s, pct: emaPct[i]}));
   const totPct = sorted.reduce((a,b)=>a+b.pct,0) || 1;
 
-  sorted.forEach((s, i)=>{ 
-    const pct = s.pct * 100 / totPct;
-    const div=document.createElement('div'); div.className='bar';
-    const fill=document.createElement('div'); fill.className='fill';
-    fill.style.width=`${pct.toFixed(2)}%`;
-    fill.style.background=`rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})`;
-    const label=document.createElement('span');
-    const hex='#'+s.rgb.map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
-    label.textContent = `${pct.toFixed(1)}%  ${hex}`;
-    const tick=document.createElement('i'); tick.className='target'; tick.style.left=`${TARGET[i]}%`;
-    div.appendChild(fill); div.appendChild(label); div.appendChild(tick);
-    bars.appendChild(div);
-    const swEl=document.createElement('span'); swEl.className='swatch';
-    swEl.style.background=`rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]})`; legend.appendChild(swEl);
+  // ---- ONE timestamp per frame ----
+  const now = performance.now();
+
+  // smooth, sticky bar rendering (reuses DOM)
+  renderBars(sorted, totPct, now);
+   
+
+
+// Throttled legend refresh (~1/sec)
+if (legend && (now - lastLegendTs >= 1000)) {
+  legend.innerHTML = '';
+  sorted.forEach(seg => {
+    const swEl = document.createElement('span');
+    swEl.className = 'swatch';
+    swEl.style.background = `rgb(${seg.rgb[0]},${seg.rgb[1]},${seg.rgb[2]})`;
+    legend.appendChild(swEl);
   });
+  lastLegendTs = now;
+}
 
   // score (throttled if needed)
   const pcts = sorted.map(s=> s.pct * 100 / totPct);
   const {score, tag, actual} = grade6010(pcts);
 
-  const now = performance.now();
   const shouldUpdateScore = (scoreUpdateMode === 'frame') || (now - lastScoreUpdateTs >= 1000);
-
   if (shouldUpdateScore) {
     actualEl.textContent = `${actual[0]} / ${actual[1]} / ${actual[2]}`;
     scoreEl.textContent  = String(score);
@@ -756,7 +751,7 @@ renderBars(sorted, totPct, now);
 
   // Golden HUD
   if (phiOn.checked){
-    const rect=getFrameRect();
+    const rect = getFrameRect();
     drawPhiGrid(gctx, rect);
     const { cx, cy, score:phiScore, bestCorner } = saliencyFromImageData(imgData, w, h);
     const sx = rect.x + (cx / w) * rect.w;
@@ -777,6 +772,7 @@ renderBars(sorted, totPct, now);
     ? v.requestVideoFrameCallback(()=>loop())
     : requestAnimationFrame(loop);
 }
+
 v.addEventListener('loadeddata', loop);
 
 /* =========================

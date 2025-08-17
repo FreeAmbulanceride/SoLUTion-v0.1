@@ -21,6 +21,40 @@ const INCL_NEUTRALS_KEY = 'inclNeutrals6010';
 /* =========================
    Tiny helpers
 ========================= */
+function markProOnly(selectors){
+  selectors.forEach(s => {
+    const el = document.querySelector(s);
+    if (el) el.closest('.group')?.classList.add('pro-only');
+  });
+}
+
+function setupUIMode(){
+  const uiSel = document.getElementById('uiMode');
+  const saved = localStorage.getItem('uiMode') || 'simple';
+
+  document.body.classList.toggle('simple', saved === 'simple');
+  document.body.classList.toggle('pro',    saved === 'pro');
+
+  if (uiSel) {
+    uiSel.value = saved;
+    uiSel.addEventListener('change', (e)=>{
+      const v = e.target.value;
+      document.body.classList.toggle('simple', v === 'simple');
+      document.body.classList.toggle('pro',    v === 'pro');
+      localStorage.setItem('uiMode', v);
+    });
+  }
+
+  // Auto-tag “advanced” controls so their parent .group hides in Simple mode.
+  markProOnly([
+    '#alpha','#scale','#offx','#offy','#flip','#grid',
+    '#overlayMode','#wipeWrap',
+    '#refUpload','#grabRef',
+    '#phiSpiral','#phiFit','#phiQ'
+  ]);
+}
+
+
 function ensureBarNodes(){
   if (barNodes.length) return;
   for (let i=0;i<3;i++){
@@ -790,7 +824,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // lock scroll on landing
   document.body.classList.add('lock');
 
-  // sync range rails
+  // defaults for a calmer first-run
+  if (typeof inclNeutrals !== 'undefined' && inclNeutrals) inclNeutrals.checked = false; // start with neutrals OFF
+
+  // rails
   document.querySelectorAll('input[type="range"]').forEach(el=>{
     updRange(el);
     el.addEventListener('input', ()=>updRange(el));
@@ -801,6 +838,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#phiOn').checked = false;
   $('#phiSpiral').value = 'off';
 
+    setupUIMode();
   // saturation UI init
   const savedSat = localStorage.getItem(SAT_KEY);
   setSatUIFromValue(savedSat != null ? (+savedSat)/100 : 0.12);

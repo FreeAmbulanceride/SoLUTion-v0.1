@@ -141,6 +141,12 @@ canvas.hidden{ display:none }
 .bars{ display:grid; gap:6px; background:rgba(0,0,0,.35); padding:10px; border-radius:10px; border:1px solid var(--ui-border) }
 .bar{ position:relative; height:22px; background:#222; border-radius:6px; overflow:hidden }
 .fill{ height:100% }
+/* Smooth bar movement */
+.bars .fill{
+  transition: width .35s ease;   /* glide instead of snap */
+  will-change: width;
+}
+
 .bar span{ position:absolute; left:8px; top:2px; font-weight:600; text-shadow:0 1px 2px rgba(0,0,0,.6) }
 .bar .target{
   position:absolute; top:3px; bottom:3px; width:3px;

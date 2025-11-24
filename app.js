@@ -30,20 +30,26 @@ function markProOnly(selectors){
 
 function setupUIMode(){
   const uiSel = document.getElementById('uiMode');
-  const saved = localStorage.getItem('uiMode') || 'simple';
+  const toggleWrap = document.querySelector('#modeGroup .mode-toggle');
+  const toggleBtns = toggleWrap ? Array.from(toggleWrap.querySelectorAll('button[data-mode]')) : [];
+  const applyMode = (mode)=>{
+    const v = mode === 'pro' ? 'pro' : 'simple';
+    document.body.classList.toggle('simple', v === 'simple');
+    document.body.classList.toggle('pro',    v === 'pro');
+    if (uiSel) uiSel.value = v;
+    try{ localStorage.setItem('uiMode', v); }catch(_){}
+    toggleBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.mode === v));
+  };
 
-  document.body.classList.toggle('simple', saved === 'simple');
-  document.body.classList.toggle('pro',    saved === 'pro');
+  const saved = localStorage.getItem('uiMode') || 'simple';
+  applyMode(saved);
 
   if (uiSel) {
-    uiSel.value = saved;
-    uiSel.addEventListener('change', (e)=>{
-      const v = e.target.value;
-      document.body.classList.toggle('simple', v === 'simple');
-      document.body.classList.toggle('pro',    v === 'pro');
-      localStorage.setItem('uiMode', v);
-    });
+    uiSel.addEventListener('change', (e)=> applyMode(e.target.value));
   }
+  toggleBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=> applyMode(btn.dataset.mode));
+  });
 
   // Auto-tag “advanced” controls so their parent .group hides in Simple mode.
   markProOnly([
@@ -322,7 +328,11 @@ function fmtCountdown(ms){
 function hasPro(){ return !!localStorage.getItem(PRO_KEY); }
 function showPaywall(msg){
   const pw=$('#paywall'), msgEl=$('#pw-msg'), cdEl=$('#pw-countdown');
-  msgEl.firstChild.nodeValue = (msg || 'You’re on a free 3-day trial. ');
+  if (!pw || !msgEl || !cdEl){
+    console.warn('Paywall elements not found; skipping paywall render.');
+    return;
+  }
+  msgEl.textContent = (msg || 'You’re on a free 3-day trial. ');
   const upd=()=>{ const ms=getMsLeft(); cdEl.textContent = ms>0 ? fmtCountdown(ms) : 'trial ended'; };
   upd(); clearInterval(showPaywall._t); showPaywall._t=setInterval(upd,15000);
   pw.hidden=false;
@@ -642,6 +652,7 @@ function drawPhiMarker(ctx,cx,cy){
 ========================= */
 let scoreUpdateMode   = localStorage.getItem('scoreUpdateMode') || 'frame'; // 'frame'|'second'
 let lastScoreUpdateTs = 0;
+let lastVizUpdateTs   = 0;
 let prevScoreInt      = null;
 
 function initScoreUpdateMode(){
@@ -760,22 +771,23 @@ function loop(){
   // ---- ONE timestamp per frame ----
   const now = performance.now();
 
-  // smooth, sticky bar rendering (reuses DOM)
-  renderBars(sorted, totPct, now);
-   
+  const shouldUpdateViz = (scoreUpdateMode === 'frame') || (now - lastVizUpdateTs >= 1000);
 
+  if (shouldUpdateViz) {
+    // smooth, sticky bar rendering (reuses DOM)
+    renderBars(sorted, totPct, now);
 
-// Throttled legend refresh (~1/sec)
-if (legend && (now - lastLegendTs >= 1000)) {
-  legend.innerHTML = '';
-  sorted.forEach(seg => {
-    const swEl = document.createElement('span');
-    swEl.className = 'swatch';
-    swEl.style.background = `rgb(${seg.rgb[0]},${seg.rgb[1]},${seg.rgb[2]})`;
-    legend.appendChild(swEl);
-  });
-  lastLegendTs = now;
-}
+    // Throttled legend refresh
+    if (legend) {
+      legend.innerHTML = '';
+      sorted.forEach(seg => {
+        const swEl = document.createElement('span');
+        swEl.className = 'swatch';
+        swEl.style.background = `rgb(${seg.rgb[0]},${seg.rgb[1]},${seg.rgb[2]})`;
+        legend.appendChild(swEl);
+      });
+    }
+  }
 
   // score (throttled if needed)
   const pcts = sorted.map(s=> s.pct * 100 / totPct);
@@ -789,6 +801,11 @@ if (legend && (now - lastLegendTs >= 1000)) {
     if (prevScoreInt !== 100 && score === 100) playChime();
     prevScoreInt = score;
     lastScoreUpdateTs = now;
+  }
+
+  if (shouldUpdateViz) {
+    lastVizUpdateTs = now;
+    lastLegendTs = now;
   }
 
   // Golden HUD

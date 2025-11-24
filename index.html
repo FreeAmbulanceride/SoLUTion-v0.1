@@ -6,8 +6,8 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"/>
     <title>soLUTion Color Monitor • Overlay • PHI Scorer</title>
-    <link rel="stylesheet" href="styles.css" />
-    <!-- No web fonts: stick to fast, crisp system UI fonts -->
+    <link rel="stylesheet" href="styles.css?v=2" />
+    <!-- No web fonts: fast, crisp system UI fonts -->
     <script src="./app.js" defer></script>
   </head>
   <body class="lock">
@@ -41,21 +41,25 @@ Hit the 60/30/10 balance with live bars and a running accuracy score, line up sh
     </section>
 
     <!-- Studio -->
-    <main id="studio" hidden>
+<main id="studio" hidden>
       <header class="toolbar">
-        <div class="group" id="modeGroup">
+        <div class="group g-mode" id="modeGroup">
   <label>Mode</label>
   <select id="uiMode">
     <option value="simple">Simple</option>
     <option value="pro">Pro</option>
   </select>
+  <div class="mode-toggle" aria-hidden="true">
+    <button type="button" data-mode="simple">Simple</button>
+    <button type="button" data-mode="pro">Pro</button>
+  </div>
 </div>
 
-        <button id="startBtn" class="btn">Start Camera</button>
-        <label>Camera <select id="device"></select></label>
+        <button id="startBtn" class="btn g-start">Start Camera</button>
+        <label class="g-camera">Camera <select id="device"></select></label>
         <span id="err" role="status" aria-live="polite"></span>
 
-        <div class="group">
+        <div class="group g-sat">
   <label><input type="checkbox" id="inclNeutrals" checked> include neutrals</label>
   <label class="muted">K=<span id="kval">3</span></label>
 
@@ -67,7 +71,7 @@ Hit the 60/30/10 balance with live bars and a running accuracy score, line up sh
   </label>
 </div>
 
-        <div class="group">
+        <div class="group g-ref">
           <label>Ref still <input id="refUpload" type="file" accept="image/*" /></label>
           <button id="grabRef" class="btn">Capture Current Frame</button>
           <label>mode
@@ -79,11 +83,11 @@ Hit the 60/30/10 balance with live bars and a running accuracy score, line up sh
           <label>opacity <input id="alpha" type="range" min="0" max="100" value="45" /></label>
         </div>
 
-        <div class="group">
+        <div class="group g-photo">
           <button id="btnCapture" class="btn">Snap/Save Photo</button>
         </div>
 
-        <div class="group">
+        <div class="group g-transform">
           <label>scale <input id="scale" type="range" min="50" max="150" value="100" /></label>
           <label>x <input id="offx" type="range" min="-200" max="200" value="0" /></label>
           <label>y <input id="offy" type="range" min="-200" max="200" value="0" /></label>
@@ -94,7 +98,7 @@ Hit the 60/30/10 balance with live bars and a running accuracy score, line up sh
           </label>
         </div>
 
-        <div class="group">
+        <div class="group g-phi">
           <label><input id="phiOn" type="checkbox" /> Golden HUD Display</label>
           <label>spiral
             <select id="phiSpiral">
@@ -148,7 +152,7 @@ Hit the 60/30/10 balance with live bars and a running accuracy score, line up sh
       </section>
     </main>
 
-    <!-- Optional paywall (disabled by default in app.js) -->
+    <!-- Optional paywall (disabled by default in app.js) 
     <div id="paywall" hidden>
       <div class="pw-card">
         <h2>Unlock Studio</h2>
@@ -163,7 +167,7 @@ Hit the 60/30/10 balance with live bars and a running accuracy score, line up sh
           <button class="link" id="btn-restore">I've already purchased</button>
         </div>
       </div>
-    </div>
+    </div> -->
     <script>
 document.addEventListener('DOMContentLoaded', () => {
   const btn = document.getElementById('openStudio');

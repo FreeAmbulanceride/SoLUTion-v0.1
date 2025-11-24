@@ -6,7 +6,7 @@ const TRIAL_DAYS      = 3;
 const TRIAL_KEY       = 'trialStartedAt_v1';
 const PRO_KEY         = 'proEntitlement_v1';
 const LAST_DEVICE_KEY = 'lastVideoDeviceId_v1';
-const THEME_KEY       = 'derivedTheme_v1';
+const THEME_KEY       = 'derivedTheme_v2';
 const SAT_KEY         = 'satCutoff6010';       // slider persistence (0..40 stored)
 // --- bar smoothing / hysteresis ---
 const BAR_SOFT = 1;          // %: if |diff| >= 1% for long enough, update
@@ -914,5 +914,5 @@ inclNeutrals?.addEventListener('change', ()=>{
 
 // derive theme after full load if none saved
 window.addEventListener('load', ()=>{
-  if (!restoreSavedThemeIfAny()) deriveThemeFromHeroNow();
+  restoreSavedThemeIfAny();
 }, { once:true });

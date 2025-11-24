@@ -1,5 +1,5 @@
 // Simple cache-first service worker
-const CACHE = "6010-v3";
+const CACHE = "6010-v4";
 const ASSETS = [
   "./",
   "./index.html",

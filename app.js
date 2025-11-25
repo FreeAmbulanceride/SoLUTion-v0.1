@@ -16,7 +16,7 @@ let barNodes = [];           // DOM refs for 3 bars
 let lastLegendTs = 0;
 const barSticky = Array.from({length:3}, ()=>({ value:0, since:0, init:false }));
 const INCL_NEUTRALS_KEY = 'inclNeutrals6010';
-
+var currentGuide = 'off';
 
 /* =========================
    Tiny helpers
@@ -531,6 +531,8 @@ function drawGhost(){
   const H = gcv.height = v.clientHeight || (v.videoHeight * (W/(v.videoWidth||W))|0);
   const ctx=gctx; ctx.clearRect(0,0,W,H);
 
+
+
   if (refImg && W>0 && H>0){
     const s=(+scale.value||100)/100, a=(+alpha.value||0)/100, dx=+offx.value||0, dy=+offy.value||0, doFlip=!!flip.checked;
     const rW=refImg.naturalWidth||refImg.width, rH=refImg.naturalHeight||refImg.height;
@@ -717,6 +719,17 @@ function loop(){
 
   drawGhost();
 
+ // DEBUG: Log when drawing
+  if (typeof currentGuide !== 'undefined' && currentGuide !== 'off') {
+    console.log('Drawing guide:', currentGuide, 'on rect:', getFrameRect());
+  }
+
+ // Draw composition guide on the ghost canvas
+  if (typeof CompositionGuides !== 'undefined' && typeof currentGuide !== 'undefined' && currentGuide !== 'off') {
+    var guideRect = getFrameRect();
+    CompositionGuides.draw(gctx, guideRect, currentGuide);
+  }
+
   const scaleX = DOWNSCALE_W / v.videoWidth;
   const w = DOWNSCALE_W, h = Math.round(v.videoHeight * scaleX);
   cv.width = w; 
@@ -834,6 +847,10 @@ function loop(){
 
 v.addEventListener('loadeddata', loop);
 
+
+
+
+
 /* =========================
    Landing → Studio wiring
 ========================= */
@@ -842,7 +859,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.body.classList.add('lock');
 
   // defaults for a calmer first-run
-  if (typeof inclNeutrals !== 'undefined' && inclNeutrals) inclNeutrals.checked = false; // start with neutrals OFF
+  if (typeof inclNeutrals !== 'undefined' && inclNeutrals) inclNeutrals.checked = false;
 
   // rails
   document.querySelectorAll('input[type="range"]').forEach(el=>{
@@ -851,14 +868,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // defaults
-  const gridEl = document.getElementById('grid') || document.getElementById('gridChk');
-  if (gridEl) gridEl.checked = false;
-  const phiEl = document.getElementById('phiOn') || document.getElementById('phiChk');
-  if (phiEl) phiEl.checked = false;
-  const phiSpiralEl = document.getElementById('phiSpiral') || document.getElementById('spiralSelect');
-  if (phiSpiralEl) phiSpiralEl.value = 'off';
+  $('#grid').checked = false;
+  $('#phiOn').checked = false;
+  $('#phiSpiral').value = 'off';
 
-    setupUIMode();
+  setupUIMode();
+  
   // saturation UI init
   const savedSat = localStorage.getItem(SAT_KEY);
   setSatUIFromValue(savedSat != null ? (+savedSat)/100 : 0.12);
@@ -870,16 +885,17 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   satCutoffEl?.addEventListener('change', ()=>{
     localStorage.setItem(SAT_KEY, String(+satCutoffEl.value));
-    emaPct = null; // immediate response to new cutoff
+    emaPct = null;
   });
-inclNeutrals?.addEventListener('change', ()=>{
-  localStorage.setItem(INCL_NEUTRALS_KEY, inclNeutrals.checked ? '1' : '0');
-  refreshSatDisabledState();
-  emaPct = null; // re-warm smoothing after a policy change
-});
+  
+  inclNeutrals?.addEventListener('change', ()=>{
+    localStorage.setItem(INCL_NEUTRALS_KEY, inclNeutrals.checked ? '1' : '0');
+    refreshSatDisabledState();
+    emaPct = null;
+  });
 
   // Open Studio
-  (document.getElementById('openStudioBtn') || document.getElementById('openStudio'))?.addEventListener('click', async ()=>{
+  $('#openStudio')?.addEventListener('click', async ()=>{
     ensureAudio();
     if (!(await ensureEntitled())) return;
     const landing = $('#landing');
@@ -913,7 +929,41 @@ inclNeutrals?.addEventListener('change', ()=>{
 
   // score throttle
   initScoreUpdateMode();
-});
+
+  /* =========================
+     Composition Guides Integration
+     =========================  */
+  var guideSelect = document.getElementById('guideSelect');
+  if (guideSelect) {
+    guideSelect.addEventListener('change', function() {
+      currentGuide = guideSelect.value;
+    });
+  }
+
+  var btnGuideToggle = document.getElementById('btnGuideToggle');
+  if (btnGuideToggle) {
+    btnGuideToggle.addEventListener('click', function() {
+      if (currentGuide === 'off') {
+        currentGuide = 'thirds';
+        if (guideSelect) guideSelect.value = 'thirds';
+      } else {
+        currentGuide = 'off';
+        if (guideSelect) guideSelect.value = 'off';
+      }
+      btnGuideToggle.classList.toggle('active', currentGuide !== 'off');
+    });
+  }
+
+  // Keyboard shortcut: G for guides
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'g' || e.key === 'G') {
+      if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'SELECT') {
+        if (btnGuideToggle) btnGuideToggle.click();
+      }
+    }
+  });
+
+}); // <-- This closes DOMContentLoaded
 
 // derive theme after full load if none saved
 window.addEventListener('load', ()=>{

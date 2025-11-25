@@ -1305,3 +1305,165 @@ body.pro .control-card.pro-only .control-card__title {
     page-break-inside: avoid;
   }
 }
+
+.stage { position: relative; }
+
+/* ================================
+   STAGE BAR
+   ================================ */
+.stage-bar {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(22, 27, 38, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  pointer-events: auto;
+}
+
+.stage-bar__group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stage-bar__divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0 6px;
+}
+
+.stage-bar__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  min-width: 56px;
+  font-family: inherit;
+}
+
+.stage-bar__btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.stage-bar__btn:active {
+  transform: scale(0.95);
+}
+
+.stage-bar__btn.active {
+  background: var(--accent);
+  color: white;
+}
+
+.stage-bar__btn svg {
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.stage-bar__label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+}
+
+/* Capture button - always accent colored */
+.stage-bar__btn#btnCapture {
+  background: var(--accent);
+  color: white;
+}
+
+.stage-bar__btn#btnCapture:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+
+/* Guide select dropdown */
+.stage-bar__select {
+  padding: 8px 32px 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: white;
+  background-color: rgba(255, 255, 255, 0.1);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: inherit;
+  min-width: 140px;
+}
+
+.stage-bar__select:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.stage-bar__select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
+.stage-bar__select option,
+.stage-bar__select optgroup {
+  background: #1C2333;
+  color: white;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .stage-bar {
+    padding: 6px 10px;
+    gap: 4px;
+    bottom: 12px;
+  }
+  
+  .stage-bar__btn {
+    padding: 8px 10px;
+    min-width: 44px;
+  }
+  
+  .stage-bar__label {
+    display: none;
+  }
+  
+  .stage-bar__select {
+    min-width: 100px;
+    font-size: 12px;
+    padding: 6px 28px 6px 10px;
+  }
+  
+  .stage-bar__divider {
+    height: 28px;
+    margin: 0 4px;
+  }
+}
+
+@media (max-width: 500px) {
+  /* Hide zebra/skin on very small screens */
+  .stage-bar__group:last-child {
+    display: none;
+  }
+}

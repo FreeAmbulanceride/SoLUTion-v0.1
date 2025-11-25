@@ -1,190 +1,408 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-    <title>soLUTion Color Monitor • Overlay • PHI Scorer</title>
-    <link rel="stylesheet" href="styles.css?v=2" />
-    <!-- No web fonts: fast, crisp system UI fonts -->
-    <script src="./app.js" defer></script>
-  </head>
-  <body class="lock">
-    <!-- Landing -->
-    <section id="landing" class="hero">
-      <!-- TIP: put your image in this repo and point to it below.
-           Use a RELATIVE path for GitHub Pages (no leading slash).
-           Example here assumes: ./SoLUTion-v0.1/soLUTion1a.png  -->
-      <div class="card" style="--hero:url('./soLUTion1a.png?v=3')">
-        <div class="bg" aria-hidden="true"></div>
-        <div class="scrim" aria-hidden="true"></div>
-        <div class="content">
-          <h1>Real-Time 60/30/10 Color Balance Metering</h1>
-          <p>
-           On-Set Color & Composition Studio. 
-Nail your palette and framing in real time—before the client ever says “one more take.”
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>60/30/10 Studio — Real-Time Color Balance Metering</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="simple lock">
 
-Hit the 60/30/10 balance with live bars and a running accuracy score, line up shots with a ghost/wipe reference, and lock composition with a Golden-ratio HUD and focal point.
-          </p>
-          <div class="actions">
-            <button id="openStudio" class="btn">Open Studio</button>
-            
-
+  <!-- ============ LANDING PAGE ============ -->
+  <section id="landing" class="landing">
+    <div class="landing__card">
+      <div class="landing__bg bg" aria-hidden="true"></div>
+      <div class="landing__scrim" aria-hidden="true"></div>
+      <div class="landing__content">
+        <header class="landing__header">
+          <div class="logo">
+            <svg class="logo__icon" width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+              <rect x="2" y="2" width="28" height="28" rx="6" fill="var(--accent, #E85A8B)"/>
+              <rect x="6" y="14" width="8" height="12" rx="2" fill="var(--bg-primary, #07090F)"/>
+              <rect x="16" y="10" width="5" height="16" rx="2" fill="var(--bg-primary, #07090F)" opacity="0.7"/>
+              <rect x="23" y="18" width="3" height="8" rx="1.5" fill="var(--bg-primary, #07090F)" opacity="0.5"/>
+            </svg>
+            <span class="logo__text">60/30/10</span>
           </div>
-          <p class="small" style="opacity:.85">
-            Camera requires HTTPS or <code>http://localhost</code>. Mobile
-            supported.
+        </header>
+        
+        <div class="landing__body">
+          <h1 class="landing__title">On-Set Color & Composition Studio</h1>
+          <p class="landing__description">
+            Nail your palette and framing in real time—before the client ever says "one more take." 
+            Hit the 60/30/10 balance with live metering, lock composition with golden-ratio guides, 
+            and compare shots with ghost/wipe references.
           </p>
+          
+          <div class="landing__actions">
+            <button type="button" class="btn btn--primary btn--lg" id="openStudio">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              Open Studio
+            </button>
+            <a href="https://github.com/freeambulanceride" class="btn btn--ghost" target="_blank" rel="noopener">
+              SolowSolution 2025
+            </a>
+          </div>
+        </div>
+        
+        <footer class="landing__footer">
+          <p class="landing__note">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            Camera requires HTTPS or localhost. Mobile supported.
+          </p>
+        </footer>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PAYWALL (if enabled) ============ -->
+  <section id="paywall" class="paywall" hidden>
+    <div class="paywall__card">
+      <h2 class="paywall__title">60/30/10 Studio</h2>
+      <p class="paywall__msg" id="pw-msg">You're on a free 3-day trial.</p>
+      <p class="paywall__countdown" id="pw-countdown"></p>
+      <div class="paywall__actions">
+        <button type="button" class="btn btn--primary" id="btn-start-trial">Start Free Trial</button>
+        <button type="button" class="btn btn--secondary" id="btn-month">Monthly</button>
+        <button type="button" class="btn btn--secondary" id="btn-year">Yearly</button>
+        <button type="button" class="btn btn--secondary" id="btn-life">Lifetime</button>
+        <button type="button" class="btn btn--ghost" id="btn-restore">Restore Purchase</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STUDIO APP ============ -->
+  <section id="studio" class="studio" hidden>
+    
+    <!-- Top Navigation Bar -->
+    <header class="topbar">
+      <div class="topbar__left">
+        <div class="logo logo--sm">
+          <svg class="logo__icon" width="24" height="24" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <rect x="2" y="2" width="28" height="28" rx="6" fill="var(--accent, #E85A8B)"/>
+            <rect x="6" y="14" width="8" height="12" rx="2" fill="var(--bg-primary, #07090F)"/>
+            <rect x="16" y="10" width="5" height="16" rx="2" fill="var(--bg-primary, #07090F)" opacity="0.7"/>
+            <rect x="23" y="18" width="3" height="8" rx="1.5" fill="var(--bg-primary, #07090F)" opacity="0.5"/>
+          </svg>
+          <span class="logo__text">60/30/10</span>
         </div>
       </div>
-    </section>
+      
+      <div class="topbar__center" id="modeGroup">
+        <!-- Desktop: Select -->
+        <select id="uiMode" class="mode-select">
+          <option value="simple">Simple</option>
+          <option value="pro">Pro</option>
+        </select>
+        <!-- Mobile: Button Toggle -->
+        <div class="mode-toggle">
+          <button type="button" class="mode-toggle__btn active" data-mode="simple">Simple</button>
+          <button type="button" class="mode-toggle__btn" data-mode="pro">Pro</button>
+        </div>
+      </div>
+      
+      <div class="topbar__right">
+        <button type="button" class="btn btn--primary" id="startBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="icon-camera">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span class="btn__label">Start Camera</span>
+        </button>
+      </div>
+    </header>
 
-    <!-- Studio -->
-<main id="studio" hidden>
-      <header class="toolbar">
-        <div class="group g-mode" id="modeGroup">
-  <label>Mode</label>
-  <select id="uiMode">
-    <option value="simple">Simple</option>
-    <option value="pro">Pro</option>
-  </select>
-  <div class="mode-toggle" aria-hidden="true">
-    <button type="button" data-mode="simple">Simple</button>
-    <button type="button" data-mode="pro">Pro</button>
-  </div>
-</div>
+    <!-- Main Content Area -->
+    <main class="studio__main">
+      
+      <!-- Video Stage -->
+      <div class="stage" id="stage">
+        <video id="v" autoplay muted playsinline></video>
+        <canvas id="ghost" class="stage__overlay"></canvas>
+        <canvas id="c" class="visually-hidden"></canvas>
+        
+        <!-- Floating Capture Button -->
+        <div class="stage__actions">
+          <button type="button" class="btn btn--fab" id="btnCapture" aria-label="Capture photo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <circle cx="12" cy="12" r="4"/>
+            </svg>
+          </button>
+        </div>
+      </div>
 
-        <button id="startBtn" class="btn g-start">Start Camera</button>
-        <label class="g-camera">Camera <select id="device"></select></label>
-        <span id="err" role="status" aria-live="polite"></span>
-
-        <div class="group g-sat">
-  <label><input type="checkbox" id="inclNeutrals" checked> include neutrals</label>
-  <label class="muted">K=<span id="kval">3</span></label>
-
-  <!-- NEW: min saturation cutoff (0.00–0.40) -->
-  <label class="muted" style="display:flex; align-items:center; gap:6px;">
-    min sat
-    <input id="satCutoff" type="range" min="0" max="40" value="12" />
-    <span id="satCutoffVal">0.12</span>
-  </label>
-</div>
-
-        <div class="group g-ref">
-          <label>Ref still <input id="refUpload" type="file" accept="image/*" /></label>
-          <button id="grabRef" class="btn">Capture Current Frame</button>
-          <label>mode
-            <select id="overlayMode">
-              <option value="overlay">Ghost</option>
-              <option value="wipe">Split/Wipe</option>
-            </select>
-          </label>
-          <label>opacity <input id="alpha" type="range" min="0" max="100" value="45" /></label>
+      <!-- Controls Sidebar -->
+      <aside class="controls">
+        
+        <!-- Camera Selection -->
+        <div class="control-card">
+          <h3 class="control-card__title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            Camera
+          </h3>
+          <div class="control-card__body">
+            <label class="field">
+              <span class="field__label">Source</span>
+              <select id="device" class="field__select">
+                <option value="">Select camera...</option>
+              </select>
+            </label>
+          </div>
         </div>
 
-        <div class="group g-photo">
-          <button id="btnCapture" class="btn">Snap/Save Photo</button>
+        <!-- Color Detection Settings -->
+        <div class="control-card">
+          <h3 class="control-card__title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="13.5" cy="6.5" r="2.5"/>
+              <circle cx="17.5" cy="10.5" r="2.5"/>
+              <circle cx="8.5" cy="7.5" r="2.5"/>
+              <circle cx="6.5" cy="12.5" r="2.5"/>
+              <path d="M12 22c-4.97 0-9-2.24-9-5v-.09c0-1.79 2.69-3.3 6.5-4.02L12 22l2.5-9.11c3.81.72 6.5 2.23 6.5 4.02V17c0 2.76-4.03 5-9 5z"/>
+            </svg>
+            Detection
+          </h3>
+          <div class="control-card__body">
+            <label class="field field--inline">
+              <input type="checkbox" id="inclNeutrals" class="field__checkbox">
+              <span class="field__label">Include neutrals</span>
+            </label>
+            
+            <label class="field">
+              <span class="field__label">Clusters (K=3)</span>
+              <span class="field__value" id="kval">3</span>
+            </label>
+            
+            <label class="field">
+              <span class="field__label">Min Saturation</span>
+              <div class="field__row">
+                <input type="range" id="satCutoff" min="0" max="40" value="12" class="field__range">
+                <output id="satCutoffVal" class="field__output">0.12</output>
+              </div>
+            </label>
+          </div>
         </div>
 
-        <div class="group g-transform">
-          <label>scale <input id="scale" type="range" min="50" max="150" value="100" /></label>
-          <label>x <input id="offx" type="range" min="-200" max="200" value="0" /></label>
-          <label>y <input id="offy" type="range" min="-200" max="200" value="0" /></label>
-          <label class="muted"><input id="flip" type="checkbox" /> flip</label>
-          <label class="muted"><input id="grid" type="checkbox" /> grid</label>
-          <label class="muted" id="wipeWrap" style="display:none">wipe
-            <input id="wipe" type="range" min="0" max="100" value="50" />
-          </label>
+        <!-- Reference Image (Pro) -->
+        <div class="control-card pro-only">
+          <h3 class="control-card__title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+            Reference
+          </h3>
+          <div class="control-card__body">
+            <div class="field">
+              <input type="file" id="refUpload" accept="image/*" class="field__file">
+            </div>
+            <button type="button" class="btn btn--sm btn--secondary" id="grabRef">
+              Capture Current Frame
+            </button>
+            
+            <label class="field">
+              <span class="field__label">Blend Mode</span>
+              <select id="overlayMode" class="field__select">
+                <option value="overlay">Ghost</option>
+                <option value="wipe">Split/Wipe</option>
+              </select>
+            </label>
+            
+            <label class="field">
+              <span class="field__label">Opacity</span>
+              <div class="field__row">
+                <input type="range" id="alpha" min="0" max="100" value="35" class="field__range">
+                <output class="field__output">35%</output>
+              </div>
+            </label>
+          </div>
         </div>
 
-        <div class="group g-phi">
-          <label><input id="phiOn" type="checkbox" /> Golden HUD Display</label>
-          <label>spiral
-            <select id="phiSpiral">
-              <option value="off" selected>off — no spiral</option>
-              <option value="auto">Auto Detect</option>
-              <option value="tl">TL</option>
-              <option value="tr">TR</option>
-              <option value="bl">BL</option>
-              <option value="br">BR</option>
-            </select>
-          </label>
-          <label>fit
-            <select id="phiFit">
-              <option value="inscribe" selected>fit inside</option>
-              <option value="cover">cover frame</option>
-            </select>
-          </label>
-          <label>Q% <input id="phiQ" type="range" min="1" max="20" value="5" /></label>
-          <label>sat wt <input id="satW" type="range" min="0" max="100" value="55" /></label>
-          <label>sat curve <input id="satG" type="range" min="50" max="140" value="85" /></label>
+        <!-- Transform Controls (Pro) -->
+        <div class="control-card pro-only">
+          <h3 class="control-card__title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="5 9 2 12 5 15"/>
+              <polyline points="9 5 12 2 15 5"/>
+              <polyline points="15 19 12 22 9 19"/>
+              <polyline points="19 9 22 12 19 15"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <line x1="12" y1="2" x2="12" y2="22"/>
+            </svg>
+            Transform
+          </h3>
+          <div class="control-card__body">
+            <label class="field">
+              <span class="field__label">Scale</span>
+              <div class="field__row">
+                <input type="range" id="scale" min="50" max="200" value="100" class="field__range">
+                <output class="field__output">100%</output>
+              </div>
+            </label>
+            
+            <div class="field__grid">
+              <label class="field">
+                <span class="field__label">X Offset</span>
+                <input type="range" id="offx" min="-200" max="200" value="0" class="field__range">
+              </label>
+              <label class="field">
+                <span class="field__label">Y Offset</span>
+                <input type="range" id="offy" min="-200" max="200" value="0" class="field__range">
+              </label>
+            </div>
+            
+            <div class="field__row field__row--switches">
+              <label class="field field--inline">
+                <input type="checkbox" id="flip" class="field__checkbox">
+                <span class="field__label">Flip</span>
+              </label>
+              <label class="field field--inline">
+                <input type="checkbox" id="grid" class="field__checkbox">
+                <span class="field__label">Grid</span>
+              </label>
+            </div>
+            
+            <label class="field" id="wipeWrap" style="display: none;">
+              <span class="field__label">Wipe Position</span>
+              <input type="range" id="wipe" min="0" max="100" value="50" class="field__range">
+            </label>
+          </div>
         </div>
-      </header>
 
-      <section id="stage">
-        <video id="v" playsinline autoplay muted></video>
-        <canvas id="ghost" class="overlay" aria-hidden="true"></canvas>
-        <canvas id="c" class="hidden" aria-hidden="true"></canvas>
+        <!-- Golden Ratio (Pro) -->
+        <div class="control-card pro-only">
+          <h3 class="control-card__title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v18"/>
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <path d="M3 9h18"/>
+              <path d="M3 15h18"/>
+              <path d="M9 3v18"/>
+              <path d="M15 3v18"/>
+            </svg>
+            Golden Ratio
+          </h3>
+          <div class="control-card__body">
+            <label class="field field--inline">
+              <input type="checkbox" id="phiOn" class="field__checkbox">
+              <span class="field__label">Show HUD</span>
+            </label>
+            
+            <label class="field">
+              <span class="field__label">Spiral</span>
+              <select id="phiSpiral" class="field__select">
+                <option value="off">Off</option>
+                <option value="auto">Auto Detect</option>
+                <option value="tl">Top Left</option>
+                <option value="tr">Top Right</option>
+                <option value="bl">Bottom Left</option>
+                <option value="br">Bottom Right</option>
+              </select>
+            </label>
+            
+            <label class="field">
+              <span class="field__label">Fit Mode</span>
+              <select id="phiFit" class="field__select">
+                <option value="inscribe">Fit Inside</option>
+                <option value="cover">Cover Frame</option>
+              </select>
+            </label>
+            
+            <div class="field__grid">
+              <label class="field">
+                <span class="field__label">Quality %</span>
+                <div class="field__row">
+                  <input type="range" id="phiQ" min="1" max="20" value="5" class="field__range">
+                  <output class="field__output">5%</output>
+                </div>
+              </label>
+              <label class="field">
+                <span class="field__label">Sat Weight</span>
+                <div class="field__row">
+                  <input type="range" id="satW" min="0" max="100" value="50" class="field__range">
+                  <output class="field__output">50%</output>
+                </div>
+              </label>
+            </div>
+            
+            <label class="field">
+              <span class="field__label">Sat Curve</span>
+              <div class="field__row">
+                <input type="range" id="satG" min="50" max="200" value="100" class="field__range">
+                <output class="field__output">100</output>
+              </div>
+            </label>
+          </div>
+        </div>
 
-        <div class="overlayHUD" aria-hidden="true">
-          <div class="bars" id="bars"></div>
-         
-<div class="readout">
-  <div id="legend"></div>
-  <div>Actual: <span id="actual"></span></div>
-
-  <div style="display:flex; align-items:center; gap:10px;">
-    <div>Score: <span id="score" class="tag">--</span></div>
-    <label style="font-weight:600; opacity:.85;">
-      update
-      <select id="scoreUpdate">
-        <option value="frame">per frame</option>
-        <option value="second">per second</option>
-      </select>
-    </label>
-  </div>
-
-  <div>Phi: <span id="phiScore" class="tag">--</span></div>
-</div>
-
-          
-      </section>
+      </aside>
     </main>
 
-    <!-- Optional paywall (disabled by default in app.js) 
-    <div id="paywall" hidden>
-      <div class="pw-card">
-        <h2>Unlock Studio</h2>
-        <p id="pw-msg">Start your free 3-day trial. <span id="pw-countdown"></span></p>
-        <div class="pw-actions">
-          <button class="btn" id="btn-month">Go Pro — $0.99/mo</button>
-          <button class="btn" id="btn-year">$9.99/yr</button>
-          <button class="btn" id="btn-life">Lifetime full of free upgrades $29.99</button>
+    <!-- Bottom Readout Panel -->
+    <footer class="readout-bar">
+      <div class="readout-bar__inner">
+        
+        <!-- Color Bars (dynamically populated by JS) -->
+        <div class="color-bars" id="bars">
+          <!-- JS will inject .bar elements here -->
         </div>
-        <div class="pw-subtle">
-          <button class="link" id="btn-start-trial">Start Free Trial</button>
-          <button class="link" id="btn-restore">I've already purchased</button>
+
+        <!-- Stats -->
+        <div class="readout-stats">
+          <div class="stat">
+            <span class="stat__label">Detected:</span>
+            <span class="stat__value" id="legend">—</span>
+          </div>
+          <div class="stat">
+            <span class="stat__label">Actual:</span>
+            <span class="stat__value" id="actual">—</span>
+          </div>
+          <div class="stat stat--score">
+            <span class="stat__label">Score:</span>
+            <span class="stat__value tag" id="score">—</span>
+          </div>
+          <div class="stat pro-only">
+            <span class="stat__label">Phi:</span>
+            <span class="stat__value tag" id="phiScore">—</span>
+          </div>
         </div>
+
+        <!-- Update Mode -->
+        <div class="readout-options pro-only">
+          <label class="field field--inline field--sm">
+            <span class="field__label">Update:</span>
+            <select id="scoreUpdate" class="field__select field__select--sm">
+              <option value="frame">Per frame</option>
+              <option value="second">Per second</option>
+            </select>
+          </label>
+        </div>
+        
       </div>
-    </div> -->
-    <script>
-document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.getElementById('openStudio');
-  const landing = document.getElementById('landing');
-  const studio = document.getElementById('studio');
+    </footer>
 
-  if (!btn) { console.warn('#openStudio not found'); return; }
-  btn.addEventListener('click', () => {
-    studio.hidden = false;
-    landing.classList.add('is-hiding');
-    landing.addEventListener('transitionend', () => {
-      landing.hidden = true;
-      document.body.classList.remove('lock');
-    }, { once:true });
-  });
-});
-</script>
+    <!-- Error Display -->
+    <div class="toast" id="errorToast" hidden>
+      <span class="toast__message" id="err"></span>
+      <button type="button" class="toast__close" onclick="this.parentElement.hidden=true" aria-label="Dismiss">&times;</button>
+    </div>
 
-  </body>
+  </section>
+
+  <script src="app.js"></script>
+</body>
 </html>

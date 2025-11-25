@@ -1,7 +1,7 @@
 /* =========================
    Config
 ========================= */
-const ENABLE_PAYWALL  = true;    // show soft paywall if true
+const ENABLE_PAYWALL  = false;    // show soft paywall if true
 const TRIAL_DAYS      = 3;
 const TRIAL_KEY       = 'trialStartedAt_v1';
 const PRO_KEY         = 'proEntitlement_v1';
@@ -851,9 +851,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // defaults
-  $('#grid').checked = false;
-  $('#phiOn').checked = false;
-  $('#phiSpiral').value = 'off';
+  const gridEl = document.getElementById('grid') || document.getElementById('gridChk');
+  if (gridEl) gridEl.checked = false;
+  const phiEl = document.getElementById('phiOn') || document.getElementById('phiChk');
+  if (phiEl) phiEl.checked = false;
+  const phiSpiralEl = document.getElementById('phiSpiral') || document.getElementById('spiralSelect');
+  if (phiSpiralEl) phiSpiralEl.value = 'off';
 
     setupUIMode();
   // saturation UI init
@@ -876,7 +879,7 @@ inclNeutrals?.addEventListener('change', ()=>{
 });
 
   // Open Studio
-  $('#openStudio')?.addEventListener('click', async ()=>{
+  (document.getElementById('openStudioBtn') || document.getElementById('openStudio'))?.addEventListener('click', async ()=>{
     ensureAudio();
     if (!(await ensureEntitled())) return;
     const landing = $('#landing');

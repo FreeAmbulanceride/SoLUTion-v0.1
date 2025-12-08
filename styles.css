@@ -767,6 +767,25 @@ input[type="file"]::file-selector-button:hover {
   gap: var(--space-md);
 }
 
+.topbar__support {
+  font-size: var(--text-sm);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  color: var(--accent);
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(10,10,10,0.35);
+  text-decoration: none;
+  transition: background var(--duration-fast), border-color var(--duration-fast);
+}
+
+.topbar__support:hover,
+.topbar__support:focus-visible {
+  background: rgba(255,255,255,0.08);
+  border-color: var(--accent);
+}
+
 .topbar__center {
   display: flex;
   align-items: center;

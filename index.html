@@ -457,6 +457,16 @@
           <!-- JS will inject .bar elements here -->
         </div>
 
+        <div class="palette-panel" id="palettePanel" aria-live="polite">
+          <div class="palette-panel__header">
+            <span class="palette-panel__title">Palette chips</span>
+            <button type="button" class="btn btn--ghost btn--sm" id="paletteExport">Copy palette</button>
+          </div>
+          <div class="palette-chips" id="paletteChips" aria-label="Detected palette colors">
+            <!-- Palette chips injected by JS -->
+          </div>
+        </div>
+
         <!-- Stats -->
         <div class="readout-stats">
           <div class="stat">
@@ -483,7 +493,7 @@
             <span class="field__label">Update:</span>
             <select id="scoreUpdate" class="field__select field__select--sm">
               <option value="frame">Per frame</option>
-              <option value="second">Per second</option>
+              <option value="second" selected>Per second</option>
             </select>
           </label>
         </div>

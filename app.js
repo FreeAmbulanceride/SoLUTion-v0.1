@@ -109,6 +109,65 @@ function renderBars(sorted, totPct, now){
   }
 }
 
+function updatePaletteChips(sorted){
+  if (!paletteChips) return;
+  paletteChips.innerHTML = '';
+  paletteSnapshot = [];
+  sorted.forEach(seg=>{
+    if (!seg) return;
+    const hex = rgbHex(seg.rgb);
+    const rgbText = formatRgb(seg.rgb);
+    const oklch = rgbToOklch(seg.rgb);
+    paletteSnapshot.push({ hex, rgb: seg.rgb, oklch });
+    const chip = document.createElement('div'); chip.className='palette-chip';
+    const swatch = document.createElement('span'); swatch.className='palette-chip__swatch';
+    swatch.style.background = hex;
+    const meta = document.createElement('div'); meta.className='palette-chip__meta';
+    meta.innerHTML = `<strong>${hex}</strong><span>${rgbText}</span><span>${formatOklch(oklch)}</span>`;
+    chip.appendChild(swatch);
+    chip.appendChild(meta);
+    paletteChips.appendChild(chip);
+  });
+}
+
+function buildPaletteExportText(palette){
+  if (!palette?.length) return '';
+  return palette.map((entry,i)=>`Color ${i+1}: ${entry.hex} | ${formatRgb(entry.rgb)} | ${formatOklch(entry.oklch)}`).join('\n');
+}
+
+function copyPaletteText(text){
+  if (!text) return false;
+  if (navigator.clipboard?.writeText){
+    return navigator.clipboard.writeText(text).then(()=>true).catch(()=>false);
+  }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly','');
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  const success = document.execCommand('copy');
+  ta.remove();
+  return success;
+}
+
+paletteExportBtn?.addEventListener('click', async ()=>{
+  const text = buildPaletteExportText(paletteSnapshot);
+  if (!text) return;
+  try{
+    const copied = await copyPaletteText(text);
+    paletteExportBtn.textContent = copied ? 'Copied!' : 'Copy failed';
+  }catch(_){
+    paletteExportBtn.textContent = 'Copy failed';
+  }
+  clearTimeout(paletteCopyTimeout);
+  paletteCopyTimeout = setTimeout(()=>{
+    paletteExportBtn.textContent = paletteExportBtnLabel;
+  }, 1800);
+});
+
 const $ = (sel) => document.querySelector(sel);
 
 function updRange(el){
@@ -134,6 +193,39 @@ function rgb2hsv(r,g,b){
 }
 function rgbHex([r,g,b]){
   return '#'+[r,g,b].map(v=>Math.round(v).toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+
+function srgbToLinear(value){
+  const v = value / 255;
+  return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+}
+function rgbToOklab(rgb){
+  const r = srgbToLinear(rgb[0]);
+  const g = srgbToLinear(rgb[1]);
+  const b = srgbToLinear(rgb[2]);
+  const L = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
+  const M = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
+  const S = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
+  const l = Math.cbrt(L);
+  const m = Math.cbrt(M);
+  const s = Math.cbrt(S);
+  const okL = 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s;
+  const okA = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
+  const okB = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
+  return { l: okL, a: okA, b: okB };
+}
+function rgbToOklch(rgb){
+  const { l, a, b } = rgbToOklab(rgb);
+  const c = Math.hypot(a, b);
+  let h = Math.atan2(b, a) * 180 / Math.PI;
+  if (h < 0) h += 360;
+  return { l, c, h };
+}
+function formatOklch({ l, c, h }){
+  return `OKLCH(${l.toFixed(2)} ${c.toFixed(2)} ${h.toFixed(1)})`;
+}
+function formatRgb(rgb){
+  return `RGB(${rgb.map(v=>Math.round(v)).join(', ')})`;
 }
 
 /* =========================
@@ -366,8 +458,12 @@ $('#kval') && ($('#kval').textContent=K);
 const v=$('#v'), cv=$('#c'), bars=$('#bars');
 const legend=$('#legend'), actualEl=$('#actual'), scoreEl=$('#score');
 const devSel=$('#device'), inclNeutrals=$('#inclNeutrals'), errEl=$('#err');
+const paletteChips=$('#paletteChips'), paletteExportBtn=$('#paletteExport');
 
 let emaPct=null, stream=null;
+let paletteSnapshot = [];
+let paletteCopyTimeout;
+const paletteExportBtnLabel = paletteExportBtn?.textContent || 'Copy palette';
 
 function uiError(msg){ errEl.textContent = msg||''; if(msg) console.warn(msg); }
 
@@ -652,7 +748,7 @@ function drawPhiMarker(ctx,cx,cy){
 /* =========================
    Score update throttle
 ========================= */
-let scoreUpdateMode   = localStorage.getItem('scoreUpdateMode') || 'frame'; // 'frame'|'second'
+let scoreUpdateMode   = localStorage.getItem('scoreUpdateMode') || 'second'; // 'frame'|'second'
 let lastScoreUpdateTs = 0;
 let lastVizUpdateTs   = 0;
 let prevScoreInt      = null;
@@ -800,6 +896,8 @@ function loop(){
         legend.appendChild(swEl);
       });
     }
+
+    updatePaletteChips(sorted);
   }
 
   // score (throttled if needed)

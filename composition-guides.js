@@ -1,871 +1,482 @@
 /**
- * Composition Guides Module
- * Clean, modular drawing functions for photographic composition overlays
- * 
- * Usage:
- *   CompositionGuides.draw(ctx, rect, 'thirds', options);
- *   CompositionGuides.list(); // returns array of all guide keys
+ * Composition Guides Module (Refined)
+ * Provides crisp, high-contrast overlays and reusable drawing helpers.
+ *
+ * Usage: CompositionGuides.draw(ctx, rect, 'thirds', options);
  */
-
 var CompositionGuides = (function() {
-  
-  // Constants
-  var PHI = 1.61803398875;
-  var PHI_INV = 1 / PHI;
-  
-  // Default drawing options
-  var defaultOpts = {
-    color: 'rgba(255, 255, 255, 0.6)',
+  const PHI = 1.61803398875;
+  const PHI_INV = 1 / PHI;
+
+  const defaultOpts = {
+    color: '#FFFFFF',
     lineWidth: 1.5,
     showPoints: true,
-    pointRadius: 4
+    pointRadius: 4,
+    shadow: true,
+    flipX: false,
+    flipY: false
   };
-  
-  // Merge options helper
-  function mergeOpts(opts) {
-    var result = {};
-    for (var key in defaultOpts) {
-      result[key] = defaultOpts[key];
-    }
-    if (opts) {
-      for (var key in opts) {
-        result[key] = opts[key];
-      }
-    }
-    return result;
+
+  function getOpts(opts) {
+    if (!opts) return defaultOpts;
+    return Object.assign({}, defaultOpts, opts);
   }
-  
-  // Draw a point/hotspot
+
+  function snap(value) {
+    return Math.round(value * 2) / 2;
+  }
+
+  function applyStyle(ctx, opts) {
+    ctx.strokeStyle = opts.color;
+    ctx.fillStyle = opts.color;
+    ctx.lineWidth = opts.lineWidth;
+    ctx.lineCap = 'square';
+    ctx.lineJoin = 'round';
+    ctx.globalAlpha = 1;
+    if (opts.shadow) {
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+      ctx.shadowBlur = 3;
+    }
+  }
+
+  function cleanupStyle(ctx) {
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
+    ctx.globalAlpha = 1;
+  }
+
   function drawPoint(ctx, x, y, opts) {
     if (!opts.showPoints) return;
+    ctx.save();
+    ctx.shadowBlur = 0;
     ctx.beginPath();
-    ctx.arc(x, y, opts.pointRadius, 0, Math.PI * 2);
-    ctx.fillStyle = opts.color;
+    ctx.arc(snap(x), snap(y), opts.pointRadius, 0, Math.PI * 2);
     ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.stroke();
+    ctx.restore();
   }
-  
-  // ==========================================
-  // CLASSIC GRIDS
-  // ==========================================
-  
+
+  function drawLine(ctx, x1, y1, x2, y2) {
+    ctx.beginPath();
+    ctx.moveTo(snap(x1), snap(y1));
+    ctx.lineTo(snap(x2), snap(y2));
+    ctx.stroke();
+  }
+
+  function drawRect(ctx, x, y, w, h) {
+    ctx.strokeRect(snap(x), snap(y), snap(w), snap(h));
+  }
+
+  function renderGuide(ctx, rect, opts, drawFn) {
+    const finalOpts = getOpts(opts);
+    ctx.save();
+    if (finalOpts.flipX || finalOpts.flipY) {
+      ctx.translate(rect.x + rect.w / 2, rect.y + rect.h / 2);
+      ctx.scale(finalOpts.flipX ? -1 : 1, finalOpts.flipY ? -1 : 1);
+      ctx.translate(-(rect.x + rect.w / 2), -(rect.y + rect.h / 2));
+    }
+    applyStyle(ctx, finalOpts);
+    drawFn(ctx, rect, finalOpts);
+    cleanupStyle(ctx);
+    ctx.restore();
+  }
+
   function drawThirds(ctx, rect, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth;
-    
-    // Vertical lines
-    ctx.beginPath();
-    ctx.moveTo(x + w / 3, y);
-    ctx.lineTo(x + w / 3, y + h);
-    ctx.moveTo(x + 2 * w / 3, y);
-    ctx.lineTo(x + 2 * w / 3, y + h);
-    
-    // Horizontal lines
-    ctx.moveTo(x, y + h / 3);
-    ctx.lineTo(x + w, y + h / 3);
-    ctx.moveTo(x, y + 2 * h / 3);
-    ctx.lineTo(x + w, y + 2 * h / 3);
-    ctx.stroke();
-    
-    // Power points
-    drawPoint(ctx, x + w / 3, y + h / 3, opts);
-    drawPoint(ctx, x + 2 * w / 3, y + h / 3, opts);
-    drawPoint(ctx, x + w / 3, y + 2 * h / 3, opts);
-    drawPoint(ctx, x + 2 * w / 3, y + 2 * h / 3, opts);
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      const x1 = r.x + r.w / 3;
+      const x2 = r.x + (r.w * 2) / 3;
+      const y1 = r.y + r.h / 3;
+      const y2 = r.y + (r.h * 2) / 3;
+      drawLine(innerCtx, x1, r.y, x1, r.y + r.h);
+      drawLine(innerCtx, x2, r.y, x2, r.y + r.h);
+      drawLine(innerCtx, r.x, y1, r.x + r.w, y1);
+      drawLine(innerCtx, r.x, y2, r.x + r.w, y2);
+      drawPoint(innerCtx, x1, y1, opts);
+      drawPoint(innerCtx, x2, y1, opts);
+      drawPoint(innerCtx, x1, y2, opts);
+      drawPoint(innerCtx, x2, y2, opts);
+    });
   }
-  
+
   function drawPhiGrid(ctx, rect, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    
-    var x1 = x + w * PHI_INV;
-    var x2 = x + w * (1 - PHI_INV);
-    var y1 = y + h * PHI_INV;
-    var y2 = y + h * (1 - PHI_INV);
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth;
-    ctx.setLineDash([8, 6]);
-    
-    ctx.beginPath();
-    ctx.moveTo(x1, y);
-    ctx.lineTo(x1, y + h);
-    ctx.moveTo(x2, y);
-    ctx.lineTo(x2, y + h);
-    ctx.moveTo(x, y1);
-    ctx.lineTo(x + w, y1);
-    ctx.moveTo(x, y2);
-    ctx.lineTo(x + w, y2);
-    ctx.stroke();
-    
-    ctx.setLineDash([]);
-    drawPoint(ctx, x1, y1, opts);
-    drawPoint(ctx, x1, y2, opts);
-    drawPoint(ctx, x2, y1, opts);
-    drawPoint(ctx, x2, y2, opts);
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      const x1 = r.x + r.w * PHI_INV;
+      const x2 = r.x + r.w * (1 - PHI_INV);
+      const y1 = r.y + r.h * PHI_INV;
+      const y2 = r.y + r.h * (1 - PHI_INV);
+      innerCtx.setLineDash([6, 4]);
+      drawLine(innerCtx, x1, r.y, x1, r.y + r.h);
+      drawLine(innerCtx, x2, r.y, x2, r.y + r.h);
+      drawLine(innerCtx, r.x, y1, r.x + r.w, y1);
+      drawLine(innerCtx, r.x, y2, r.x + r.w, y2);
+      innerCtx.setLineDash([]);
+      drawPoint(innerCtx, x1, y1, opts);
+      drawPoint(innerCtx, x1, y2, opts);
+      drawPoint(innerCtx, x2, y1, opts);
+      drawPoint(innerCtx, x2, y2, opts);
+    });
   }
-  
+
   function drawQuadrant(ctx, rect, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    var cx = x + w / 2, cy = y + h / 2;
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth;
-    
-    // Main cross
-    ctx.beginPath();
-    ctx.moveTo(cx, y);
-    ctx.lineTo(cx, y + h);
-    ctx.moveTo(x, cy);
-    ctx.lineTo(x + w, cy);
-    ctx.stroke();
-    
-    // Quadrant centers
-    drawPoint(ctx, x + w / 4, y + h / 4, opts);
-    drawPoint(ctx, x + 3 * w / 4, y + h / 4, opts);
-    drawPoint(ctx, x + w / 4, y + 3 * h / 4, opts);
-    drawPoint(ctx, x + 3 * w / 4, y + 3 * h / 4, opts);
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      const cx = r.x + r.w / 2;
+      const cy = r.y + r.h / 2;
+      drawLine(innerCtx, cx, r.y, cx, r.y + r.h);
+      drawLine(innerCtx, r.x, cy, r.x + r.w, cy);
+      drawPoint(innerCtx, r.x + r.w / 4, r.y + r.h / 4, opts);
+      drawPoint(innerCtx, r.x + (r.w * 3) / 4, r.y + r.h / 4, opts);
+      drawPoint(innerCtx, r.x + r.w / 4, r.y + (r.h * 3) / 4, opts);
+      drawPoint(innerCtx, r.x + (r.w * 3) / 4, r.y + (r.h * 3) / 4, opts);
+    });
   }
-  
+
   function drawCenter(ctx, rect, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    var cx = x + w / 2, cy = y + h / 2;
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth;
-    
-    ctx.beginPath();
-    ctx.moveTo(cx, y);
-    ctx.lineTo(cx, y + h);
-    ctx.moveTo(x, cy);
-    ctx.lineTo(x + w, cy);
-    ctx.stroke();
-    
-    // Center point
-    ctx.beginPath();
-    ctx.arc(cx, cy, opts.pointRadius + 2, 0, Math.PI * 2);
-    ctx.fillStyle = opts.color;
-    ctx.fill();
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      const cx = r.x + r.w / 2;
+      const cy = r.y + r.h / 2;
+      drawLine(innerCtx, cx, r.y, cx, r.y + r.h);
+      drawLine(innerCtx, r.x, cy, r.x + r.w, cy);
+      innerCtx.beginPath();
+      innerCtx.arc(snap(cx), snap(cy), opts.pointRadius + 2, 0, Math.PI * 2);
+      innerCtx.fill();
+    });
   }
-  
-  // ==========================================
-  // GOLDEN SPIRAL
-  // ==========================================
-  
+
   function drawGoldenSpiral(ctx, rect, corner, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    
-    // Calculate the golden rectangle that fits
-    var frameAR = w / h;
-    var rw, rh, rx, ry;
-    
-    if (frameAR >= PHI) {
-      rh = h;
-      rw = h * PHI;
-      rx = x + (w - rw) / 2;
-      ry = y;
-    } else {
-      rw = w;
-      rh = w / PHI;
-      rx = x;
-      ry = y + (h - rh) / 2;
-    }
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth;
-    ctx.setLineDash([6, 6]);
-    
-    var sx = rx, sy = ry, sw = rw, sh = rh;
-    var dir = corner;
-    
-    for (var i = 0; i < 8; i++) {
-      // Draw rectangle
-      ctx.strokeRect(sx, sy, sw, sh);
-      
-      // Draw arc
-      ctx.beginPath();
-      var arcR = Math.min(sw, sh);
-      
-      if (dir === 'tl') {
-        ctx.arc(sx + sw, sy + sh, arcR, Math.PI, 1.5 * Math.PI);
-        dir = 'bl';
-      } else if (dir === 'tr') {
-        ctx.arc(sx, sy + sh, arcR, 1.5 * Math.PI, 2 * Math.PI);
-        dir = 'tl';
-      } else if (dir === 'br') {
-        ctx.arc(sx, sy, arcR, 0, 0.5 * Math.PI);
-        dir = 'tr';
-      } else if (dir === 'bl') {
-        ctx.arc(sx + sw, sy, arcR, 0.5 * Math.PI, Math.PI);
-        dir = 'br';
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      let sw = r.w;
+      let sh = r.w / PHI;
+      let sx = r.x;
+      let sy = r.y;
+      if (sh > r.h) {
+        sh = r.h;
+        sw = sh * PHI;
       }
-      ctx.stroke();
-      
-      // Subdivide
-      if (sw >= sh) {
-        var newW = sw / PHI;
-        if (corner === 'tr' || corner === 'br') {
-          sx = sx + (sw - newW);
-        }
-        sw = newW;
-      } else {
-        var newH = sh / PHI;
-        if (corner === 'bl' || corner === 'br') {
-          sy = sy + (sh - newH);
-        }
-        sh = newH;
+      if (corner.includes('r')) {
+        sx = r.x + (r.w - sw);
       }
-      
-      if (sw < 10 || sh < 10) break;
-    }
-    
-    ctx.setLineDash([]);
-    ctx.restore();
+      if (corner.includes('b')) {
+        sy = r.y + (r.h - sh);
+      }
+      let dir = corner;
+      innerCtx.setLineDash([5, 4]);
+      for (let i = 0; i < 10; i++) {
+        drawRect(innerCtx, sx, sy, sw, sh);
+        innerCtx.beginPath();
+        const arcR = Math.min(sw, sh);
+        if (dir === 'tl') {
+          innerCtx.arc(sx + sw, sy + sh, arcR, Math.PI, 1.5 * Math.PI);
+          dir = 'bl';
+        } else if (dir === 'tr') {
+          innerCtx.arc(sx, sy + sh, arcR, 1.5 * Math.PI, 2 * Math.PI);
+          dir = 'tl';
+        } else if (dir === 'br') {
+          innerCtx.arc(sx, sy, arcR, 0, 0.5 * Math.PI);
+          dir = 'tr';
+        } else if (dir === 'bl') {
+          innerCtx.arc(sx + sw, sy, arcR, 0.5 * Math.PI, Math.PI);
+          dir = 'br';
+        }
+        innerCtx.stroke();
+        if (sw >= sh) {
+          const newW = sw / PHI;
+          if (corner.includes('r')) sx += sw - newW;
+          sw = newW;
+        } else {
+          const newH = sh / PHI;
+          if (corner.includes('b')) sy += sh - newH;
+          sh = newH;
+        }
+        if (sw < 8 || sh < 8) break;
+      }
+      innerCtx.setLineDash([]);
+    });
   }
-  
-  // ==========================================
-  // TRIANGLES & DIAGONALS
-  // ==========================================
-  
+
   function drawGoldenTriangles(ctx, rect, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth;
-    
-    // Main diagonal
-    ctx.beginPath();
-    ctx.moveTo(x, y + h);
-    ctx.lineTo(x + w, y);
-    ctx.stroke();
-    
-    // Perpendicular lines from corners
-    ctx.setLineDash([6, 4]);
-    var t = (w * w) / (w * w + h * h);
-    
-    // From top-left
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + w * t, y + h * (1 - t));
-    ctx.stroke();
-    
-    // From bottom-right
-    ctx.beginPath();
-    ctx.moveTo(x + w, y + h);
-    ctx.lineTo(x + w * (1 - t), y + h * t);
-    ctx.stroke();
-    
-    ctx.setLineDash([]);
-    
-    // Intersection points
-    drawPoint(ctx, x + w * t, y + h * (1 - t), opts);
-    drawPoint(ctx, x + w * (1 - t), y + h * t, opts);
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      drawLine(innerCtx, r.x, r.y + r.h, r.x + r.w, r.y);
+      innerCtx.setLineDash([6, 4]);
+      const t = (r.w * r.w) / (r.w * r.w + r.h * r.h);
+      drawLine(innerCtx, r.x, r.y, r.x + r.w * t, r.y + r.h * (1 - t));
+      drawLine(innerCtx, r.x + r.w, r.y + r.h, r.x + r.w * (1 - t), r.y + r.h * t);
+      innerCtx.setLineDash([]);
+      drawPoint(innerCtx, r.x + r.w * t, r.y + r.h * (1 - t), opts);
+      drawPoint(innerCtx, r.x + r.w * (1 - t), r.y + r.h * t, opts);
+    });
   }
-  
+
   function drawDiagonal(ctx, rect, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth;
-    
-    // Both diagonals
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + w, y + h);
-    ctx.moveTo(x + w, y);
-    ctx.lineTo(x, y + h);
-    ctx.stroke();
-    
-    // Center point
-    drawPoint(ctx, x + w / 2, y + h / 2, opts);
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      drawLine(innerCtx, r.x, r.y, r.x + r.w, r.y + r.h);
+      drawLine(innerCtx, r.x + r.w, r.y, r.x, r.y + r.h);
+      drawPoint(innerCtx, r.x + r.w / 2, r.y + r.h / 2, opts);
+    });
   }
-  
+
   function drawBaroqueDiagonal(ctx, rect, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth + 0.5;
-    
-    // Upper-left to lower-right (comfortable, classical)
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + w, y + h);
-    ctx.stroke();
-    
-    // Arrow indicator
-    ctx.beginPath();
-    ctx.moveTo(x + w - 15, y + h - 5);
-    ctx.lineTo(x + w, y + h);
-    ctx.lineTo(x + w - 5, y + h - 15);
-    ctx.stroke();
-    
-    // Points along the line
-    drawPoint(ctx, x + w * 0.33, y + h * 0.33, opts);
-    drawPoint(ctx, x + w * 0.67, y + h * 0.67, opts);
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      innerCtx.lineWidth = opts.lineWidth + 0.5;
+      drawLine(innerCtx, r.x, r.y, r.x + r.w, r.y + r.h);
+      drawLine(innerCtx, r.x + r.w - 15, r.y + r.h - 5, r.x + r.w, r.y + r.h);
+      drawLine(innerCtx, r.x + r.w, r.y + r.h, r.x + r.w - 5, r.y + r.h - 15);
+      drawPoint(innerCtx, r.x + r.w * 0.33, r.y + r.h * 0.33, opts);
+      drawPoint(innerCtx, r.x + r.w * 0.67, r.y + r.h * 0.67, opts);
+    });
   }
-  
+
   function drawSinisterDiagonal(ctx, rect, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth + 0.5;
-    
-    // Upper-right to lower-left (tension, unease)
-    ctx.beginPath();
-    ctx.moveTo(x + w, y);
-    ctx.lineTo(x, y + h);
-    ctx.stroke();
-    
-    // Arrow indicator
-    ctx.beginPath();
-    ctx.moveTo(x + 15, y + h - 5);
-    ctx.lineTo(x, y + h);
-    ctx.lineTo(x + 5, y + h - 15);
-    ctx.stroke();
-    
-    // Points along the line
-    drawPoint(ctx, x + w * 0.67, y + h * 0.33, opts);
-    drawPoint(ctx, x + w * 0.33, y + h * 0.67, opts);
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      innerCtx.lineWidth = opts.lineWidth + 0.5;
+      drawLine(innerCtx, r.x + r.w, r.y, r.x, r.y + r.h);
+      drawLine(innerCtx, r.x + 15, r.y + r.h - 5, r.x, r.y + r.h);
+      drawLine(innerCtx, r.x, r.y + r.h, r.x + 5, r.y + r.h - 15);
+      drawPoint(innerCtx, r.x + r.w * 0.67, r.y + r.h * 0.33, opts);
+      drawPoint(innerCtx, r.x + r.w * 0.33, r.y + r.h * 0.67, opts);
+    });
   }
-  
-  // ==========================================
-  // DYNAMIC SYMMETRY
-  // ==========================================
-  
+
   function drawRabatment(ctx, rect, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    var shortSide = Math.min(w, h);
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth;
-    ctx.setLineDash([6, 4]);
-    
-    if (w > h) {
-      // Landscape: squares from left and right
-      ctx.strokeRect(x, y, shortSide, h);
-      ctx.strokeRect(x + w - shortSide, y, shortSide, h);
-      
-      ctx.setLineDash([]);
-      // Mark the inner edges
-      ctx.beginPath();
-      ctx.moveTo(x + shortSide, y);
-      ctx.lineTo(x + shortSide, y + h);
-      ctx.moveTo(x + w - shortSide, y);
-      ctx.lineTo(x + w - shortSide, y + h);
-      ctx.stroke();
-      
-      drawPoint(ctx, x + shortSide, y + h / 2, opts);
-      drawPoint(ctx, x + w - shortSide, y + h / 2, opts);
-    } else {
-      // Portrait: squares from top and bottom
-      ctx.strokeRect(x, y, w, shortSide);
-      ctx.strokeRect(x, y + h - shortSide, w, shortSide);
-      
-      ctx.setLineDash([]);
-      ctx.beginPath();
-      ctx.moveTo(x, y + shortSide);
-      ctx.lineTo(x + w, y + shortSide);
-      ctx.moveTo(x, y + h - shortSide);
-      ctx.lineTo(x + w, y + h - shortSide);
-      ctx.stroke();
-      
-      drawPoint(ctx, x + w / 2, y + shortSide, opts);
-      drawPoint(ctx, x + w / 2, y + h - shortSide, opts);
-    }
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      const short = Math.min(r.w, r.h);
+      innerCtx.setLineDash([6, 4]);
+      if (r.w > r.h) {
+        drawRect(innerCtx, r.x, r.y, short, r.h);
+        drawRect(innerCtx, r.x + r.w - short, r.y, short, r.h);
+        innerCtx.setLineDash([]);
+        drawLine(innerCtx, r.x + short, r.y, r.x + short, r.y + r.h);
+        drawLine(innerCtx, r.x + r.w - short, r.y, r.x + r.w - short, r.y + r.h);
+        drawPoint(innerCtx, r.x + short, r.y + r.h / 2, opts);
+        drawPoint(innerCtx, r.x + r.w - short, r.y + r.h / 2, opts);
+      } else {
+        drawRect(innerCtx, r.x, r.y, r.w, short);
+        drawRect(innerCtx, r.x, r.y + r.h - short, r.w, short);
+        innerCtx.setLineDash([]);
+        drawLine(innerCtx, r.x, r.y + short, r.x + r.w, r.y + short);
+        drawLine(innerCtx, r.x, r.y + r.h - short, r.x + r.w, r.y + r.h - short);
+        drawPoint(innerCtx, r.x + r.w / 2, r.y + short, opts);
+        drawPoint(innerCtx, r.x + r.w / 2, r.y + r.h - short, opts);
+      }
+    });
   }
-  
+
   function drawRootGrid(ctx, rect, root, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth;
-    ctx.setLineDash([4, 4]);
-    
-    // Diagonal
-    ctx.beginPath();
-    ctx.moveTo(x, y + h);
-    ctx.lineTo(x + w, y);
-    ctx.stroke();
-    
-    // Vertical divisions based on root
-    var divisions = Math.floor((w / h) * root);
-    divisions = Math.max(2, Math.min(divisions, 6)); // Clamp
-    
-    ctx.setLineDash([]);
-    for (var i = 1; i < divisions; i++) {
-      var xPos = x + (w * i) / divisions;
-      ctx.beginPath();
-      ctx.moveTo(xPos, y);
-      ctx.lineTo(xPos, y + h);
-      ctx.stroke();
-    }
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      innerCtx.setLineDash([4, 4]);
+      drawLine(innerCtx, r.x, r.y + r.h, r.x + r.w, r.y);
+      innerCtx.setLineDash([]);
+      const divisions = Math.max(2, Math.min(Math.floor((r.w / r.h) * root), 6));
+      for (let i = 1; i < divisions; i++) {
+        const xPos = r.x + (r.w * i) / divisions;
+        drawLine(innerCtx, xPos, r.y, xPos, r.y + r.h);
+      }
+    });
   }
-  
-  // ==========================================
-  // PERSPECTIVE GRIDS
-  // ==========================================
-  
+
   function drawPerspective1(ctx, rect, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    var cx = x + w / 2, cy = y + h / 2;
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth;
-    
-    // Vanishing point at center
-    drawPoint(ctx, cx, cy, opts);
-    
-    // Lines from corners to center
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(cx, cy);
-    ctx.moveTo(x + w, y);
-    ctx.lineTo(cx, cy);
-    ctx.moveTo(x, y + h);
-    ctx.lineTo(cx, cy);
-    ctx.moveTo(x + w, y + h);
-    ctx.lineTo(cx, cy);
-    ctx.stroke();
-    
-    // Lines from edge midpoints
-    ctx.setLineDash([4, 4]);
-    ctx.beginPath();
-    ctx.moveTo(x, cy);
-    ctx.lineTo(cx, cy);
-    ctx.moveTo(x + w, cy);
-    ctx.lineTo(cx, cy);
-    ctx.moveTo(cx, y);
-    ctx.lineTo(cx, cy);
-    ctx.moveTo(cx, y + h);
-    ctx.lineTo(cx, cy);
-    ctx.stroke();
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      const cx = r.x + r.w / 2;
+      const cy = r.y + r.h / 2;
+      drawPoint(innerCtx, cx, cy, opts);
+      drawLine(innerCtx, r.x, r.y, cx, cy);
+      drawLine(innerCtx, r.x + r.w, r.y, cx, cy);
+      drawLine(innerCtx, r.x, r.y + r.h, cx, cy);
+      drawLine(innerCtx, r.x + r.w, r.y + r.h, cx, cy);
+      innerCtx.setLineDash([4, 4]);
+      drawLine(innerCtx, r.x, cy, cx, cy);
+      drawLine(innerCtx, r.x + r.w, cy, cx, cy);
+      drawLine(innerCtx, cx, r.y, cx, cy);
+      drawLine(innerCtx, cx, r.y + r.h, cx, cy);
+      innerCtx.setLineDash([]);
+    });
   }
-  
+
   function drawPerspective2(ctx, rect, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    var cy = y + h / 2;
-    
-    // Two vanishing points on horizon
-    var vp1x = x + w * 0.15;
-    var vp2x = x + w * 0.85;
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth;
-    
-    // Horizon line
-    ctx.beginPath();
-    ctx.moveTo(x, cy);
-    ctx.lineTo(x + w, cy);
-    ctx.stroke();
-    
-    // Vanishing points
-    drawPoint(ctx, vp1x, cy, opts);
-    drawPoint(ctx, vp2x, cy, opts);
-    
-    // Lines to VP1
-    ctx.setLineDash([4, 4]);
-    ctx.beginPath();
-    ctx.moveTo(x + w / 2, y);
-    ctx.lineTo(vp1x, cy);
-    ctx.moveTo(x + w / 2, y + h);
-    ctx.lineTo(vp1x, cy);
-    ctx.stroke();
-    
-    // Lines to VP2
-    ctx.beginPath();
-    ctx.moveTo(x + w / 2, y);
-    ctx.lineTo(vp2x, cy);
-    ctx.moveTo(x + w / 2, y + h);
-    ctx.lineTo(vp2x, cy);
-    ctx.stroke();
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      const cy = r.y + r.h / 2;
+      const vp1x = r.x + r.w * 0.15;
+      const vp2x = r.x + r.w * 0.85;
+      drawLine(innerCtx, r.x, cy, r.x + r.w, cy);
+      drawPoint(innerCtx, vp1x, cy, opts);
+      drawPoint(innerCtx, vp2x, cy, opts);
+      innerCtx.setLineDash([4, 4]);
+      drawLine(innerCtx, r.x + r.w / 2, r.y, vp1x, cy);
+      drawLine(innerCtx, r.x + r.w / 2, r.y + r.h, vp1x, cy);
+      drawLine(innerCtx, r.x + r.w / 2, r.y, vp2x, cy);
+      drawLine(innerCtx, r.x + r.w / 2, r.y + r.h, vp2x, cy);
+      innerCtx.setLineDash([]);
+    });
   }
-  
+
   function drawPerspective3(ctx, rect, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    var cx = x + w / 2;
-    
-    // Three vanishing points
-    var vp1 = { x: x + w * 0.15, y: y + h * 0.4 };
-    var vp2 = { x: x + w * 0.85, y: y + h * 0.4 };
-    var vp3 = { x: cx, y: y + h * 1.2 }; // Below frame
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth;
-    
-    // Vanishing points (only ones in frame)
-    drawPoint(ctx, vp1.x, vp1.y, opts);
-    drawPoint(ctx, vp2.x, vp2.y, opts);
-    
-    // Lines to each VP
-    ctx.setLineDash([4, 4]);
-    
-    // From center to VPs
-    ctx.beginPath();
-    ctx.moveTo(cx, y + h * 0.3);
-    ctx.lineTo(vp1.x, vp1.y);
-    ctx.moveTo(cx, y + h * 0.3);
-    ctx.lineTo(vp2.x, vp2.y);
-    ctx.stroke();
-    
-    // Vertical convergence toward VP3
-    ctx.beginPath();
-    ctx.moveTo(x + w * 0.3, y);
-    ctx.lineTo(vp3.x, vp3.y);
-    ctx.moveTo(x + w * 0.7, y);
-    ctx.lineTo(vp3.x, vp3.y);
-    ctx.stroke();
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      const cx = r.x + r.w / 2;
+      const vp1 = { x: r.x + r.w * 0.15, y: r.y + r.h * 0.4 };
+      const vp2 = { x: r.x + r.w * 0.85, y: r.y + r.h * 0.4 };
+      const vp3 = { x: cx, y: r.y + r.h * 1.2 };
+      drawPoint(innerCtx, vp1.x, vp1.y, opts);
+      drawPoint(innerCtx, vp2.x, vp2.y, opts);
+      innerCtx.setLineDash([4, 4]);
+      drawLine(innerCtx, cx, r.y + r.h * 0.3, vp1.x, vp1.y);
+      drawLine(innerCtx, cx, r.y + r.h * 0.3, vp2.x, vp2.y);
+      drawLine(innerCtx, r.x + r.w * 0.3, r.y, vp3.x, vp3.y);
+      drawLine(innerCtx, r.x + r.w * 0.7, r.y, vp3.x, vp3.y);
+      innerCtx.setLineDash([]);
+    });
   }
-  
-  // ==========================================
-  // CURVES & SHAPES
-  // ==========================================
-  
+
   function drawSCurve(ctx, rect, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth + 1;
-    
-    // S-curve using bezier
-    ctx.beginPath();
-    ctx.moveTo(x, y + h * 0.9);
-    ctx.bezierCurveTo(
-      x + w * 0.4, y + h * 0.9,
-      x + w * 0.3, y + h * 0.1,
-      x + w * 0.6, y + h * 0.5
-    );
-    ctx.bezierCurveTo(
-      x + w * 0.9, y + h * 0.9,
-      x + w * 0.7, y + h * 0.1,
-      x + w, y + h * 0.1
-    );
-    ctx.stroke();
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      innerCtx.lineWidth = opts.lineWidth + 1;
+      innerCtx.beginPath();
+      innerCtx.moveTo(r.x, r.y + r.h * 0.9);
+      innerCtx.bezierCurveTo(
+        r.x + r.w * 0.4, r.y + r.h * 0.9,
+        r.x + r.w * 0.3, r.y + r.h * 0.1,
+        r.x + r.w * 0.6, r.y + r.h * 0.5
+      );
+      innerCtx.bezierCurveTo(
+        r.x + r.w * 0.9, r.y + r.h * 0.9,
+        r.x + r.w * 0.7, r.y + r.h * 0.1,
+        r.x + r.w, r.y + r.h * 0.1
+      );
+      innerCtx.stroke();
+    });
   }
-  
+
   function drawTriangle(ctx, rect, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    var cx = x + w / 2;
-    var triH = h * 0.75;
-    var triW = triH * 1.15;
-    var topY = y + (h - triH) / 2;
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth;
-    
-    ctx.beginPath();
-    ctx.moveTo(cx, topY);
-    ctx.lineTo(cx - triW / 2, topY + triH);
-    ctx.lineTo(cx + triW / 2, topY + triH);
-    ctx.closePath();
-    ctx.stroke();
-    
-    // Vertices
-    drawPoint(ctx, cx, topY, opts);
-    drawPoint(ctx, cx - triW / 2, topY + triH, opts);
-    drawPoint(ctx, cx + triW / 2, topY + triH, opts);
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      innerCtx.lineWidth = opts.lineWidth;
+      const cx = r.x + r.w / 2;
+      const triH = r.h * 0.75;
+      const triW = triH * 1.15;
+      const topY = r.y + (r.h - triH) / 2;
+      innerCtx.beginPath();
+      innerCtx.moveTo(cx, topY);
+      innerCtx.lineTo(cx - triW / 2, topY + triH);
+      innerCtx.lineTo(cx + triW / 2, topY + triH);
+      innerCtx.closePath();
+      innerCtx.stroke();
+      drawPoint(innerCtx, cx, topY, opts);
+      drawPoint(innerCtx, cx - triW / 2, topY + triH, opts);
+      drawPoint(innerCtx, cx + triW / 2, topY + triH, opts);
+    });
   }
-  
+
   function drawCircle(ctx, rect, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    var cx = x + w / 2, cy = y + h / 2;
-    var r = Math.min(w, h) * 0.4;
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth;
-    
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.stroke();
-    
-    // Center point
-    drawPoint(ctx, cx, cy, opts);
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      const cx = r.x + r.w / 2;
+      const cy = r.y + r.h / 2;
+      const rad = Math.min(r.w, r.h) * 0.4;
+      innerCtx.beginPath();
+      innerCtx.arc(cx, cy, rad, 0, Math.PI * 2);
+      innerCtx.stroke();
+      drawPoint(innerCtx, cx, cy, opts);
+    });
   }
-  
+
   function drawDiamond(ctx, rect, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    var cx = x + w / 2, cy = y + h / 2;
-    var hw = w * 0.35, hh = h * 0.4;
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth;
-    
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - hh);
-    ctx.lineTo(cx + hw, cy);
-    ctx.lineTo(cx, cy + hh);
-    ctx.lineTo(cx - hw, cy);
-    ctx.closePath();
-    ctx.stroke();
-    
-    // Vertices
-    drawPoint(ctx, cx, cy - hh, opts);
-    drawPoint(ctx, cx + hw, cy, opts);
-    drawPoint(ctx, cx, cy + hh, opts);
-    drawPoint(ctx, cx - hw, cy, opts);
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      const cx = r.x + r.w / 2;
+      const cy = r.y + r.h / 2;
+      const hw = r.w * 0.35;
+      const hh = r.h * 0.4;
+      innerCtx.beginPath();
+      innerCtx.moveTo(cx, cy - hh);
+      innerCtx.lineTo(cx + hw, cy);
+      innerCtx.lineTo(cx, cy + hh);
+      innerCtx.lineTo(cx - hw, cy);
+      innerCtx.closePath();
+      innerCtx.stroke();
+      drawPoint(innerCtx, cx, cy - hh, opts);
+      drawPoint(innerCtx, cx + hw, cy, opts);
+      drawPoint(innerCtx, cx, cy + hh, opts);
+      drawPoint(innerCtx, cx - hw, cy, opts);
+    });
   }
-  
-  // ==========================================
-  // PORTRAIT & FRAMING
-  // ==========================================
-  
+
   function drawHeadroom(ctx, rect, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth;
-    
-    // Ideal head zone (top 10-20% for headroom)
-    var headroomLine = y + h * 0.12;
-    
-    ctx.setLineDash([8, 4]);
-    ctx.beginPath();
-    ctx.moveTo(x, headroomLine);
-    ctx.lineTo(x + w, headroomLine);
-    ctx.stroke();
-    
-    // Chin line (around 1/3 from bottom for medium shot)
-    var chinLine = y + h * 0.75;
-    ctx.beginPath();
-    ctx.moveTo(x, chinLine);
-    ctx.lineTo(x + w, chinLine);
-    ctx.stroke();
-    
-    // Labels
-    ctx.setLineDash([]);
-    ctx.font = '11px sans-serif';
-    ctx.fillStyle = opts.color;
-    ctx.fillText('HEADROOM', x + 8, headroomLine - 4);
-    ctx.fillText('CHIN LINE', x + 8, chinLine - 4);
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      const topLine = r.y + r.h * 0.08;
+      const eyesLine = r.y + r.h / 3;
+      innerCtx.setLineDash([8, 4]);
+      drawLine(innerCtx, r.x, topLine, r.x + r.w, topLine);
+      drawLine(innerCtx, r.x, eyesLine, r.x + r.w, eyesLine);
+      innerCtx.setLineDash([]);
+      innerCtx.font = '11px sans-serif';
+      innerCtx.fillText('TOP OF HEAD', r.x + 8, topLine - 4);
+      innerCtx.fillText('EYES', r.x + 8, eyesLine - 4);
+    });
   }
-  
+
   function drawNoseRoom(ctx, rect, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth;
-    
-    // Show the "look room" zone (subject at 1/3, space at 2/3)
-    var subjectLine = x + w / 3;
-    var lookZone = x + w * 0.67;
-    
-    ctx.setLineDash([8, 4]);
-    ctx.beginPath();
-    ctx.moveTo(subjectLine, y);
-    ctx.lineTo(subjectLine, y + h);
-    ctx.stroke();
-    
-    // Look direction arrow
-    ctx.setLineDash([]);
-    ctx.beginPath();
-    ctx.moveTo(subjectLine + 20, y + h / 2);
-    ctx.lineTo(lookZone - 20, y + h / 2);
-    ctx.stroke();
-    
-    // Arrow head
-    ctx.beginPath();
-    ctx.moveTo(lookZone - 30, y + h / 2 - 8);
-    ctx.lineTo(lookZone - 20, y + h / 2);
-    ctx.lineTo(lookZone - 30, y + h / 2 + 8);
-    ctx.stroke();
-    
-    // Label
-    ctx.font = '11px sans-serif';
-    ctx.fillStyle = opts.color;
-    ctx.fillText('LOOK ROOM →', subjectLine + 25, y + h / 2 - 10);
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, finalOpts) {
+      const lookingRight = !finalOpts.flipX;
+      const subjectX = lookingRight ? r.x + r.w / 3 : r.x + (r.w * 2) / 3;
+      const lookX = lookingRight ? r.x + r.w * 0.85 : r.x + r.w * 0.15;
+      innerCtx.setLineDash([8, 4]);
+      drawLine(innerCtx, subjectX, r.y, subjectX, r.y + r.h);
+      innerCtx.setLineDash([]);
+      drawLine(innerCtx, subjectX + (lookingRight ? 20 : -20), r.y + r.h / 2, lookX - (lookingRight ? 20 : -20), r.y + r.h / 2);
+      const headDir = lookingRight ? 1 : -1;
+      drawLine(innerCtx, lookX - 30 * headDir, r.y + r.h / 2 - 8, lookX - 20 * headDir, r.y + r.h / 2);
+      drawLine(innerCtx, lookX - 30 * headDir, r.y + r.h / 2 + 8, lookX - 20 * headDir, r.y + r.h / 2);
+      innerCtx.font = '11px sans-serif';
+      innerCtx.fillText('LOOK ROOM', subjectX + (35 * headDir), r.y + r.h / 2 - 10);
+    });
   }
-  
-  // ==========================================
-  // CINEMA SAFE ZONES
-  // ==========================================
-  
+
   function drawSafeZone(ctx, rect, percent, label, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    
-    var margin = (1 - percent) / 2;
-    var safeX = x + w * margin;
-    var safeY = y + h * margin;
-    var safeW = w * percent;
-    var safeH = h * percent;
-    
-    ctx.save();
-    ctx.strokeStyle = opts.color;
-    ctx.lineWidth = opts.lineWidth;
-    ctx.setLineDash([8, 4]);
-    
-    ctx.strokeRect(safeX, safeY, safeW, safeH);
-    
-    // Corner markers
-    ctx.setLineDash([]);
-    var markLen = 12;
-    ctx.beginPath();
-    // Top-left
-    ctx.moveTo(safeX, safeY + markLen);
-    ctx.lineTo(safeX, safeY);
-    ctx.lineTo(safeX + markLen, safeY);
-    // Top-right
-    ctx.moveTo(safeX + safeW - markLen, safeY);
-    ctx.lineTo(safeX + safeW, safeY);
-    ctx.lineTo(safeX + safeW, safeY + markLen);
-    // Bottom-right
-    ctx.moveTo(safeX + safeW, safeY + safeH - markLen);
-    ctx.lineTo(safeX + safeW, safeY + safeH);
-    ctx.lineTo(safeX + safeW - markLen, safeY + safeH);
-    // Bottom-left
-    ctx.moveTo(safeX + markLen, safeY + safeH);
-    ctx.lineTo(safeX, safeY + safeH);
-    ctx.lineTo(safeX, safeY + safeH - markLen);
-    ctx.stroke();
-    
-    // Label
-    ctx.font = '10px sans-serif';
-    ctx.fillStyle = opts.color;
-    ctx.fillText(label, safeX + 4, safeY + 12);
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      const margin = (1 - percent) / 2;
+      const safeX = r.x + r.w * margin;
+      const safeY = r.y + r.h * margin;
+      const safeW = r.w * percent;
+      const safeH = r.h * percent;
+      innerCtx.setLineDash([8, 4]);
+      drawRect(innerCtx, safeX, safeY, safeW, safeH);
+      innerCtx.setLineDash([]);
+      const markLen = 12;
+      drawLine(innerCtx, safeX, safeY + markLen, safeX, safeY);
+      drawLine(innerCtx, safeX, safeY, safeX + markLen, safeY);
+      drawLine(innerCtx, safeX + safeW - markLen, safeY, safeX + safeW, safeY);
+      drawLine(innerCtx, safeX + safeW, safeY, safeX + safeW, safeY + markLen);
+      drawLine(innerCtx, safeX + safeW, safeY + safeH - markLen, safeX + safeW, safeY + safeH);
+      drawLine(innerCtx, safeX + safeW, safeY + safeH, safeX + safeW - markLen, safeY + safeH);
+      drawLine(innerCtx, safeX + markLen, safeY + safeH, safeX, safeY + safeH);
+      drawLine(innerCtx, safeX, safeY + safeH, safeX, safeY + safeH - markLen);
+      innerCtx.font = '10px sans-serif';
+      innerCtx.fillText(label, safeX + 4, safeY + 12);
+    });
   }
-  
-  // ==========================================
-  // ASPECT RATIO CROPS
-  // ==========================================
-  
+
   function drawAspectRatio(ctx, rect, targetAspect, label, opts) {
-    opts = mergeOpts(opts);
-    var x = rect.x, y = rect.y, w = rect.w, h = rect.h;
-    var currentAspect = w / h;
-    
-    ctx.save();
-    
-    // Semi-transparent overlay for cropped areas
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    
-    if (currentAspect > targetAspect) {
-      // Too wide, add pillarbox
-      var targetW = h * targetAspect;
-      var barW = (w - targetW) / 2;
-      ctx.fillRect(x, y, barW, h);
-      ctx.fillRect(x + w - barW, y, barW, h);
-      
-      // Border lines
-      ctx.strokeStyle = opts.color;
-      ctx.lineWidth = opts.lineWidth;
-      ctx.setLineDash([4, 4]);
-      ctx.beginPath();
-      ctx.moveTo(x + barW, y);
-      ctx.lineTo(x + barW, y + h);
-      ctx.moveTo(x + w - barW, y);
-      ctx.lineTo(x + w - barW, y + h);
-      ctx.stroke();
-    } else {
-      // Too tall, add letterbox
-      var targetH = w / targetAspect;
-      var barH = (h - targetH) / 2;
-      ctx.fillRect(x, y, w, barH);
-      ctx.fillRect(x, y + h - barH, w, barH);
-      
-      ctx.strokeStyle = opts.color;
-      ctx.lineWidth = opts.lineWidth;
-      ctx.setLineDash([4, 4]);
-      ctx.beginPath();
-      ctx.moveTo(x, y + barH);
-      ctx.lineTo(x + w, y + barH);
-      ctx.moveTo(x, y + h - barH);
-      ctx.lineTo(x + w, y + h - barH);
-      ctx.stroke();
-    }
-    
-    // Label
-    ctx.setLineDash([]);
-    ctx.font = '11px sans-serif';
-    ctx.fillStyle = opts.color;
-    ctx.fillText(label, x + 8, y + 16);
-    
-    ctx.restore();
+    renderGuide(ctx, rect, opts, function(innerCtx, r, opts) {
+      innerCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      const currentAspect = r.w / r.h;
+      if (currentAspect > targetAspect) {
+        const targetW = r.h * targetAspect;
+        const barW = (r.w - targetW) / 2;
+        innerCtx.fillRect(r.x, r.y, barW, r.h);
+        innerCtx.fillRect(r.x + r.w - barW, r.y, barW, r.h);
+        drawRect(innerCtx, r.x + barW, r.y, targetW, r.h);
+      } else {
+        const targetH = r.w / targetAspect;
+        const barH = (r.h - targetH) / 2;
+        innerCtx.fillRect(r.x, r.y, r.w, barH);
+        innerCtx.fillRect(r.x, r.y + r.h - barH, r.w, barH);
+        drawRect(innerCtx, r.x, r.y + barH, r.w, targetH);
+      }
+      innerCtx.font = '11px sans-serif';
+      innerCtx.fillStyle = opts.color;
+      innerCtx.fillText(label, r.x + 8, r.y + 16);
+    });
   }
-  
-  // ==========================================
-  // GUIDE REGISTRY
-  // ==========================================
-  
-  var guides = {
+
+  const guides = {
     'off': { name: 'No Guide', draw: null },
     'thirds': { name: 'Rule of Thirds', draw: drawThirds },
     'phi': { name: 'Phi Grid', draw: drawPhiGrid },
@@ -901,11 +512,7 @@ var CompositionGuides = (function() {
     'aspect-916': { name: '9:16 Stories', draw: function(ctx, rect, opts) { drawAspectRatio(ctx, rect, 9/16, '9:16', opts); } },
     'aspect-45': { name: '4:5 Portrait', draw: function(ctx, rect, opts) { drawAspectRatio(ctx, rect, 4/5, '4:5', opts); } }
   };
-  
-  // ==========================================
-  // PUBLIC API
-  // ==========================================
-  
+
   return {
     draw: function(ctx, rect, guideKey, opts) {
       var guide = guides[guideKey];
@@ -913,23 +520,15 @@ var CompositionGuides = (function() {
         guide.draw(ctx, rect, opts);
       }
     },
-    
     list: function() {
-      var keys = [];
-      for (var key in guides) {
-        keys.push(key);
-      }
-      return keys;
+      return Object.keys(guides);
     },
-    
     getName: function(guideKey) {
       var guide = guides[guideKey];
       return guide ? guide.name : 'Unknown';
     },
-    
     exists: function(guideKey) {
       return guides.hasOwnProperty(guideKey);
     }
   };
-  
 })();

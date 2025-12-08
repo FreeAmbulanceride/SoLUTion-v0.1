@@ -153,6 +153,16 @@ function copyPaletteText(text){
   return success;
 }
 
+function syncPalettePanelState(){
+  if (!palettePanelElem) return;
+  palettePanelElem.classList.toggle('palette-panel--collapsed', paletteCollapsed);
+  if (paletteToggleBtn){
+    paletteToggleBtn.textContent = paletteCollapsed ? 'Show' : 'Hide';
+    paletteToggleBtn.setAttribute('aria-expanded', (!paletteCollapsed).toString());
+  }
+  localStorage.setItem(PALETTE_COLLAPSE_KEY, paletteCollapsed ? '1' : '0');
+}
+
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -444,27 +454,17 @@ $('#kval') && ($('#kval').textContent=K);
 const v=$('#v'), cv=$('#c'), bars=$('#bars');
 const legend=$('#legend'), actualEl=$('#actual'), scoreEl=$('#score');
 const devSel=$('#device'), inclNeutrals=$('#inclNeutrals'), errEl=$('#err');
-const paletteChips=$('#paletteChips'), paletteExportBtn=$('#paletteExport');
+let paletteChips = null;
+let paletteExportBtn = null;
+let paletteToggleBtn = null;
+let palettePanelElem = null;
 
 let emaPct=null, stream=null;
 let paletteSnapshot = [];
 let paletteCopyTimeout;
-const paletteExportBtnLabel = paletteExportBtn?.textContent || 'Copy palette';
-
-paletteExportBtn?.addEventListener('click', async ()=>{
-  const text = buildPaletteExportText(paletteSnapshot);
-  if (!text) return;
-  try{
-    const copied = await copyPaletteText(text);
-    paletteExportBtn.textContent = copied ? 'Copied!' : 'Copy failed';
-  }catch(_){
-    paletteExportBtn.textContent = 'Copy failed';
-  }
-  clearTimeout(paletteCopyTimeout);
-  paletteCopyTimeout = setTimeout(()=>{
-    paletteExportBtn.textContent = paletteExportBtnLabel;
-  }, 1800);
-});
+let paletteExportBtnLabel = 'Copy palette';
+const PALETTE_COLLAPSE_KEY = 'paletteCollapsed6010';
+let paletteCollapsed = true;
 
 function uiError(msg){ errEl.textContent = msg||''; if(msg) console.warn(msg); }
 
@@ -992,6 +992,34 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshSatDisabledState();
     emaPct = null;
   });
+
+  paletteChips = $('#paletteChips');
+  paletteExportBtn = $('#paletteExport');
+  paletteToggleBtn = $('#paletteToggle');
+  palettePanelElem = $('#palettePanel');
+  if (paletteExportBtn) paletteExportBtnLabel = paletteExportBtn.textContent || paletteExportBtnLabel;
+  paletteExportBtn?.addEventListener('click', async ()=>{
+    const text = buildPaletteExportText(paletteSnapshot);
+    if (!text) return;
+    try{
+      const copied = await copyPaletteText(text);
+      paletteExportBtn.textContent = copied ? 'Copied!' : 'Copy failed';
+    }catch(_){
+      paletteExportBtn.textContent = 'Copy failed';
+    }
+    clearTimeout(paletteCopyTimeout);
+    paletteCopyTimeout = setTimeout(()=>{
+      paletteExportBtn.textContent = paletteExportBtnLabel;
+    }, 1800);
+  });
+
+  const savedCollapsed = localStorage.getItem(PALETTE_COLLAPSE_KEY);
+  paletteCollapsed = savedCollapsed ? (savedCollapsed === '1') : true;
+  paletteToggleBtn?.addEventListener('click', ()=>{
+    paletteCollapsed = !paletteCollapsed;
+    syncPalettePanelState();
+  });
+  syncPalettePanelState();
 
   // Open Studio
   $('#openStudio')?.addEventListener('click', async ()=>{

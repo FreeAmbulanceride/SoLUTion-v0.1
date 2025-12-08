@@ -1557,13 +1557,3 @@ body.pro .control-card.pro-only .control-card__title {
     margin: 0 4px;
   }
 }
-
-@media (max-width: 500px) {
-  /* Hide zebra/skin on very small screens */
-  .stage-bar__group:last-child {
-    display: none;
-  }
-}
-.readout-options {
-  justify-self: end;
-}

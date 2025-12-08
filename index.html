@@ -128,23 +128,10 @@
       <div class="stage" id="stage">
         <video id="v" autoplay muted playsinline></video>
         <canvas id="ghost" class="stage__overlay"></canvas>
-        <canvas id="zebra" class="stage__overlay"></canvas>
         <canvas id="c" class="visually-hidden"></canvas>
         
        <!-- Stage Actions Bar (replaces lonely capture button) -->
-<div class="stage-bar" id="stageBar">
-  <div class="stage-bar__group">
-    <button type="button" class="stage-bar__btn" id="btnCapture" title="Capture photo (Space)">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"/>
-        <circle cx="12" cy="12" r="3"/>
-      </svg>
-      <span class="stage-bar__label">Snap</span>
-    </button>
-  </div>
-  
-  <div class="stage-bar__divider"></div>
-  
+        <div class="stage-bar" id="stageBar">
   <div class="stage-bar__group">
     <button type="button" class="stage-bar__btn" id="btnGuideToggle" title="Composition guides (G)">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -218,22 +205,12 @@
   <div class="stage-bar__divider"></div>
   
   <div class="stage-bar__group">
-    <button type="button" class="stage-bar__btn" id="btnZebras" title="Exposure zebras (Z)">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 3v18"/>
-        <path d="M3 12h18"/>
-        <path d="M5.5 5.5l13 13"/>
-        <path d="M18.5 5.5l-13 13"/>
+    <button type="button" class="stage-bar__btn" id="btnCapture" title="Capture photo (Space)">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <circle cx="12" cy="12" r="3"/>
       </svg>
-      <span class="stage-bar__label">Zebra</span>
-    </button>
-    
-    <button type="button" class="stage-bar__btn" id="btnSkinTone" title="Skin tone indicator (S)">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="8" r="5"/>
-        <path d="M20 21a8 8 0 0 0-16 0"/>
-      </svg>
-      <span class="stage-bar__label">Skin</span>
+      <span class="stage-bar__label">Snap</span>
     </button>
   </div>
 </div>

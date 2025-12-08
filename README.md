@@ -10,14 +10,13 @@ Live on-device color metering, composition guides, and reference tools for cinem
 - Golden-ratio HUD (grid + spiral) with saliency-based marker, phi score, and the ability to toggle the entire HUD or change the spiral fit/corner.
 - Full reference overlay: upload or capture a frame, adjust blend/wipe/scale/offset/flip/grid, and save/share a composited capture.
 - Camera / device helpers that remember the last-used camera, prioritize the rear lens on mobile, and keep the device list refreshed when hardware changes.
-- Zebra (overexposure) and skin-tone highlights painted on a dedicated overlay canvas so you can spot blown highlights or flesh-tones while shooting.
 - Palette chips that list the top 3 generated colors plus RGB/OKLCH values and a “Copy palette” button for sharing/exporting swatches.
 - Dynamic theming derived from the hero image or stored preferences, plus persistent UI mode, slider states, and saturation cutoff.
 - Soft paywall/trial helpers (currently disabled) with trial countdown, restore/purchase buttons, and localStorage billing keys.
 
 ### “Pro” mode extras
 - Pro-only controls in the sidebar (ghost/wipe reference uploads, scale/offset/alpha/grid/wipe sliders, phi HUD switches, guide list, and advanced golden-spiral/phi-fit toggles).
-- Palette export, composition guide list, zebra/skin overlays, and “Phi HUD” badges only shown while `body` has `.pro` class (managed by the simple/pro toggle).
+- Palette export, composition guide list, and “Phi HUD” badges only shown while `body` has `.pro` class (managed by the simple/pro toggle).
 - All advanced controls are hidden in simple mode through `setupUIMode()` but are still available for donors by flipping to `pro`.
 
 ## Composition guides
@@ -28,7 +27,7 @@ Live on-device color metering, composition guides, and reference tools for cinem
 1. Run a local HTTPS server (`npm`/`python`/`http-server`) because camera APIs require HTTPS or localhost.
 2. Open the page, allow camera access, and click “Open Studio” (or tap “Start Camera”) to begin streaming.
 3. Use the sidebar to pick camera sources, adjust saturation cutoffs, and switch between simple/pro UI modes.
-4. Toggle guides, zebra/skin overlays, and reference capture/ghost overlays while watching the live bars and score.
+4. Toggle guides and reference capture/ghost overlays while watching the live bars and score.
 5. Use the “palette chips” panel to copy the dominant HEX/RGB/OKLCH data for sharing or texture matching.
 
 ## Project structure

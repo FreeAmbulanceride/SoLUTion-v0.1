@@ -598,6 +598,15 @@ const refUpload=$('#refUpload'); const grabRefBtn=$('#grabRef'); const overlayMo
 const alpha=$('#alpha'); const scale=$('#scale'); const offx=$('#offx'); const offy=$('#offy');
 const flip=$('#flip'); const grid=$('#grid'); const wipe=$('#wipe'); const wipeWrap=$('#wipeWrap');
 let refImg=null;
+const zebraOverlay=$('#zebra');
+const zebraCtx=zebraOverlay?.getContext('2d');
+const btnZebras=$('#btnZebras');
+const btnSkinTone=$('#btnSkinTone');
+let zebraActive=false;
+let skinActive=false;
+let latestFrameData=null;
+let latestFrameW=0;
+let latestFrameH=0;
 
 function onUploadRef(e){
   const f=e.target.files?.[0]; if(!f) return;
@@ -628,6 +637,11 @@ function drawGhost(){
   const H = gcv.height = v.clientHeight || (v.videoHeight * (W/(v.videoWidth||W))|0);
   const ctx=gctx; ctx.clearRect(0,0,W,H);
 
+  if (zebraOverlay){
+    zebraOverlay.width = W;
+    zebraOverlay.height = H;
+  }
+
 
 
   if (refImg && W>0 && H>0){
@@ -651,6 +665,42 @@ function drawGhost(){
     ctx.restore();
   }
   if (grid.checked) drawGrid(ctx,gcv.width,gcv.height);
+}
+
+function updateToggleButton(btn, state){
+  if (!btn) return;
+  btn.classList.toggle('active', state);
+  btn.setAttribute('aria-pressed', state ? 'true' : 'false');
+}
+
+function isSkinTone(h, s, v){
+  const hue = (h * 360 + 360) % 360;
+  return v > 0.32 && v < 0.92 && s > 0.25 && s < 0.75 && ((hue >= 5 && hue <= 45) || hue >= 315);
+}
+
+function renderStageOverlay(data, w, h){
+  if (!zebraCtx || !zebraOverlay) return;
+  zebraCtx.clearRect(0,0,zebraOverlay.width,zebraOverlay.height);
+  if (!zebraActive && !skinActive) return;
+  if (!data || w===0 || h===0) return;
+  const step = 12;
+  const scaleX = zebraOverlay.width / w;
+  const scaleY = zebraOverlay.height / h;
+  for (let y=0; y<h; y+=step){
+    for (let x=0; x<w; x+=step){
+      const idx = (y * w + x) * 4;
+      const r = data[idx], g = data[idx+1], b = data[idx+2];
+      const [hue, sat, val] = rgb2hsv(r, g, b);
+      if (zebraActive && val >= 0.85 && sat <= 0.7){
+        zebraCtx.fillStyle = 'rgba(255,255,255,0.22)';
+        zebraCtx.fillRect(x * scaleX, y * scaleY, step * scaleX, step * scaleY);
+      }
+      if (skinActive && isSkinTone(hue, sat, val)){
+        zebraCtx.fillStyle = 'rgba(255, 173, 96, 0.33)';
+        zebraCtx.fillRect(x * scaleX, y * scaleY, step * scaleX, step * scaleY);
+      }
+    }
+  }
 }
 window.addEventListener('keydown', (e)=>{
   const step = e.shiftKey ? 10 : 2;
@@ -840,6 +890,10 @@ function loop(){
 
   const imgData = ctx.getImageData(0,0,w,h);
   const data    = imgData.data;
+  latestFrameData = data;
+  latestFrameW = w;
+  latestFrameH = h;
+  renderStageOverlay(data, w, h);
 
   // sparse mean for scene-change detection
   let r=0,g=0,b=0,cnt=0;
@@ -1088,6 +1142,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (btnGuideToggle) btnGuideToggle.click();
       }
     }
+  });
+
+  btnZebras?.addEventListener('click', ()=>{
+    zebraActive = !zebraActive;
+    updateToggleButton(btnZebras, zebraActive);
+    renderStageOverlay(latestFrameData, latestFrameW, latestFrameH);
+  });
+  btnSkinTone?.addEventListener('click', ()=>{
+    skinActive = !skinActive;
+    updateToggleButton(btnSkinTone, skinActive);
+    renderStageOverlay(latestFrameData, latestFrameW, latestFrameH);
   });
 
 }); // <-- This closes DOMContentLoaded

@@ -153,20 +153,6 @@ function copyPaletteText(text){
   return success;
 }
 
-paletteExportBtn?.addEventListener('click', async ()=>{
-  const text = buildPaletteExportText(paletteSnapshot);
-  if (!text) return;
-  try{
-    const copied = await copyPaletteText(text);
-    paletteExportBtn.textContent = copied ? 'Copied!' : 'Copy failed';
-  }catch(_){
-    paletteExportBtn.textContent = 'Copy failed';
-  }
-  clearTimeout(paletteCopyTimeout);
-  paletteCopyTimeout = setTimeout(()=>{
-    paletteExportBtn.textContent = paletteExportBtnLabel;
-  }, 1800);
-});
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -464,6 +450,21 @@ let emaPct=null, stream=null;
 let paletteSnapshot = [];
 let paletteCopyTimeout;
 const paletteExportBtnLabel = paletteExportBtn?.textContent || 'Copy palette';
+
+paletteExportBtn?.addEventListener('click', async ()=>{
+  const text = buildPaletteExportText(paletteSnapshot);
+  if (!text) return;
+  try{
+    const copied = await copyPaletteText(text);
+    paletteExportBtn.textContent = copied ? 'Copied!' : 'Copy failed';
+  }catch(_){
+    paletteExportBtn.textContent = 'Copy failed';
+  }
+  clearTimeout(paletteCopyTimeout);
+  paletteCopyTimeout = setTimeout(()=>{
+    paletteExportBtn.textContent = paletteExportBtnLabel;
+  }, 1800);
+});
 
 function uiError(msg){ errEl.textContent = msg||''; if(msg) console.warn(msg); }
 

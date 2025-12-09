@@ -133,6 +133,12 @@ body.lock {
   overflow: hidden;
 }
 
+@media (max-height: 640px) {
+  body.lock {
+    overflow: auto;
+  }
+}
+
 [hidden] { display: none !important; }
 
 .visually-hidden {

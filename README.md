@@ -1,4 +1,4 @@
-# 60:30:10 Studio
+# soLUTion 60:30:10 Studio (public beta 1.0)
 
 Live on-device color metering, composition guides, and reference tools for cinematographers who need to hit the 60/30/10 balance before a take. The landing page lets you trigger the studio, the service worker/manifest make it installable, and the whole app runs in the browser with no backend.
 

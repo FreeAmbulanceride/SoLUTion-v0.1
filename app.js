@@ -1018,6 +1018,22 @@ document.addEventListener('DOMContentLoaded', () => {
     paletteCollapsed = !paletteCollapsed;
     syncPalettePanelState();
   });
+
+  const ratioTrigger = document.getElementById('ratioInfo');
+  const ratioModal = document.getElementById('ratioModal');
+  const ratioClose = ratioModal?.querySelector('.info-modal__close');
+  const closeRatio = () => {
+    if (!ratioModal) return;
+    ratioModal.hidden = true;
+  };
+  ratioTrigger?.addEventListener('click', ()=>{
+    if (!ratioModal) return;
+    ratioModal.hidden = false;
+  });
+  ratioClose?.addEventListener('click', closeRatio);
+  ratioModal?.addEventListener('click', (evt)=>{
+    if (evt.target === ratioModal || evt.target.classList.contains('info-modal__backdrop')) closeRatio();
+  });
   syncPalettePanelState();
 
   // Open Studio

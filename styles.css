@@ -673,6 +673,99 @@ input[type="file"]::file-selector-button:hover {
   color: var(--text-muted);
 }
 
+.landing__info-link {
+  margin-top: var(--space-sm);
+  align-self: center;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255,255,255,0.35);
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background var(--duration-fast), border-color var(--duration-fast);
+}
+
+.info-modal__panel h2 {
+  margin: 0;
+  font-size: var(--text-2xl);
+  color: var(--text-primary);
+}
+
+.landing__info-link:hover,
+.landing__info-link:focus-visible {
+  background: rgba(255,255,255,0.15);
+  border-color: rgba(255,255,255,0.6);
+}
+
+.info-modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 1100;
+}
+
+.info-modal[hidden] {
+  display: none;
+}
+
+.info-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 9, 15, 0.8);
+  backdrop-filter: blur(8px);
+}
+
+.info-modal__panel {
+  position: relative;
+  width: min(600px, calc(100% - 32px));
+  max-height: 70vh;
+  background: var(--surface-1);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+  overflow: hidden;
+  box-shadow: 0 35px 80px rgba(0, 0, 0, 0.6);
+}
+
+.info-modal__body {
+  margin-top: var(--space-md);
+  max-height: calc(70vh - 110px);
+  overflow-y: auto;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  font-size: var(--text-sm);
+}
+
+.info-modal__body h3 {
+  margin-top: var(--space-lg);
+  color: var(--text-primary);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.info-modal__body ul {
+  margin: var(--space-md) 0;
+  padding-left: var(--space-lg);
+  color: var(--text-secondary);
+}
+
+.info-modal__close {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: var(--text-xl);
+  cursor: pointer;
+}
+
 @media (max-width: 640px) {
   .landing {
     padding: var(--space-md);

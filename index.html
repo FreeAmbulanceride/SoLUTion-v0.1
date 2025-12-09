@@ -59,10 +59,38 @@
             </svg>
             Camera requires HTTPS or localhost. Mobile supported. Local. Secure. Feed uses back camera by default.
           </p>
+          <button type="button" class="landing__info-link" id="ratioInfo">
+            Why 60/30/10?
+          </button>
         </footer>
       </div>
     </div>
   </section>
+  <div id="ratioModal" class="info-modal" role="dialog" aria-modal="true" aria-labelledby="ratioModalTitle" hidden>
+    <div class="info-modal__backdrop"></div>
+    <div class="info-modal__panel">
+      <button class="info-modal__close" aria-label="Close">×</button>
+      <h2 id="ratioModalTitle">Why 60/30/10?</h2>
+      <div class="info-modal__body">
+        <p>Have you ever seen a photograph, a set design, or a living room that just felt right? This effortless harmony isn’t magic—it’s often the result of a silent, centuries-old agreement on how the human eye processes color. That agreement is the 60:30:10 ratio, the unsung hero of visual balance and the principle at the heart of soLUTion 60:30:10.</p>
+        <h3>The Architecture of Visual Harmony</h3>
+        <p>At its core, 60:30:10 is an elegant framework for assigning roles to color. It ensures that every element on your canvas—be it a digital screen or a physical room—is working in concert, not shouting over one another. It's a guideline, not a rigid law, but one that has stood the test of time across every visual discipline.</p>
+        <ul>
+          <li><strong>60% Primary:</strong> Your anchor, the dominant color that grounds the whole scene.</li>
+          <li><strong>30% Secondary:</strong> The supporting rhythm, adding texture, contrast, and depth.</li>
+          <li><strong>10% Accent:</strong> The spark of energy that directs attention and adds focus.</li>
+        </ul>
+        <p>This proportion succeeds because it taps into our preference for order over chaos. It calms a scene by giving the eye a clear path to follow, making balance feel intentional, even to non-experts.</p>
+        <h3>From Cinema Frames to Living Rooms</h3>
+        <p>In Interior Design, the ratio defines a room’s flow: a neutral wall and large sofa (60%), supporting textures or wood tones (30%), and bold cushions or art (10%). Ignore it and the space feels agitated with competing colors.</p>
+        <p>Photographers and filmmakers rely on it to guide attention: a muted environment (60%), complementary wardrobe or props (30%), and one striking accent (10%). That accent acts as a visual magnet.</p>
+        <p>In Branding, the hero product sits on a dominant background (60%), props/props fill in 30%, and a metallic highlight or sharp shadow (10%) keeps the hero popping.</p>
+        <h3>Why a Live Guide Matters</h3>
+        <p>You already know when a shot is off, but seeing the math is hard when you’re close to your work. soLUTion 60:30:10 removes guesswork by scoring your composition live.</p>
+        <p>The real-time feedback trains your intuition. As you move props or shift the camera, you see the score rise and fall. Hitting 100% triggers the subtle chime, making strong composition feel like a gentle challenge instead of a chore.</p>
+      </div>
+    </div>
+  </div>
 
   <!-- ============ PAYWALL (if enabled) ============ -->
   <section id="paywall" class="paywall" hidden>
@@ -492,7 +520,7 @@
     </div>
 
   </section>
-<script src="composition-guides.js"></script>
+  <script src="composition-guides.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

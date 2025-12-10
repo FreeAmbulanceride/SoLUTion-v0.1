@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>60/30/10 Studio — Real-Time Color Balance Metering</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,16 +25,14 @@
               <rect x="16" y="10" width="5" height="16" rx="2" fill="var(--bg-primary, #07090F)" opacity="0.7"/>
               <rect x="23" y="18" width="3" height="8" rx="1.5" fill="var(--bg-primary, #07090F)" opacity="0.5"/>
             </svg>
-            <span class="logo__text">soLUTion 60:30:10</span>
+            <span class="logo__text">irisARC∆DE\\BETA TEST 1.01</span>
           </div>
         </header>
         
         <div class="landing__body">
-          <h1 class="landing__title">Easy/Live Color & Composition Utility</h1>
+          <h1 class="landing__title">On-Device Meter - Photo/Video Color/Composition Utility</h1>
           <p class="landing__description">
-            soLUTion 60:30:10 turns your camera feed into a live, PWA-friendly color/composition 
-            lab with 60:30:10 palette ratio scoring, golden-ratio guides, ghost overlays, palette export, 
-            capture support, and pro-mode control all in the browser with no backend.
+            Turn your camera feed into a live, PWA-friendly color/composition lab—real-time 60/30/10 grading, golden-ratio guides, ghost overlays, palette export, capture support, and a pro-mode control rail all in the browser with no backend, no uploads; every frame stays local on your end.
           </p>
           
           <div class="landing__actions">
@@ -45,7 +43,7 @@
               Open Studio
             </button>
             <a href="https://github.com/freeambulanceride" class="btn btn--ghost" target="_blank" rel="noopener">
-              irisARC∆DE\\public beta\\1.0
+              irisARC∆DE\\BETA TEST 1.01
             </a>
           </div>
         </div>
@@ -57,35 +55,9 @@
               <line x1="12" y1="16" x2="12" y2="12"/>
               <line x1="12" y1="8" x2="12.01" y2="8"/>
             </svg>
-            Camera requires HTTPS or localhost. Mobile supported. Local. Secure. Feed uses back camera by default.
+            Camera uses back camera by default and requires HTTPS or localhost. Mobile supported.
           </p>
         </footer>
-        <section class="landing__info-panel" aria-hidden="true">
-          <div class="landing__info-header">
-            <span>Why 60/30/10?</span>
-            <button type="button" class="landing__info-link" id="ratioToggle" aria-expanded="false">
-              Learn more
-            </button>
-          </div>
-          <div class="landing__info-body" id="ratioContent" hidden>
-            <p>Have you ever seen a photograph, a set design, or a living room that just felt right? This effortless harmony isn’t magic—it’s often the result of a silent, centuries-old agreement on how the human eye processes color. That agreement is the 60:30:10 ratio, the unsung hero of visual balance and the principle at the heart of soLUTion 60:30:10.</p>
-            <h3>The Architecture of Visual Harmony</h3>
-            <p>At its core, 60:30:10 is an elegant framework for assigning roles to color. It ensures that every element on your canvas—be it a digital screen or a physical room—is working in concert, not shouting over one another. It's a guideline, not a rigid law, but one that has stood the test of time across every visual discipline.</p>
-            <ul>
-              <li><strong>60% Primary:</strong> Your anchor, the dominant color that grounds the whole scene.</li>
-              <li><strong>30% Secondary:</strong> The supporting rhythm, adding texture, contrast, and depth.</li>
-              <li><strong>10% Accent:</strong> The spark of energy that directs attention and adds focus.</li>
-            </ul>
-            <p>This proportion succeeds because it taps into our preference for order over chaos. It calms a scene by giving the eye a clear path to follow, making balance feel intentional, even to non-experts.</p>
-            <h3>From Cinema Frames to Living Rooms</h3>
-            <p>In Interior Design, the ratio defines a room’s flow: a neutral wall and large sofa (60%), supporting textures or wood tones (30%), and bold cushions or art (10%). Ignore it and the space feels agitated with competing colors.</p>
-            <p>Photographers and filmmakers rely on it to guide attention: a muted environment (60%), complementary wardrobe or props (30%), and one striking accent (10%). That accent acts as a visual magnet.</p>
-            <p>In Branding, the hero product sits on a dominant background (60%), props fill in 30%, and a metallic highlight or sharp shadow (10%) keeps the hero popping.</p>
-            <h3>Why a Live Guide Matters</h3>
-            <p>You already know when a shot is off, but seeing the math is hard when you’re close to your work. soLUTion 60:30:10 removes guesswork by scoring your composition live.</p>
-            <p>The real-time feedback trains your intuition. As you move props or shift the camera, you see the score rise and fall. Hitting 100% triggers the subtle chime, making strong composition feel like a gentle challenge instead of a chore.</p>
-          </div>
-        </section>
       </div>
     </div>
   </section>
@@ -137,9 +109,6 @@
       </div>
       
       <div class="topbar__right">
-        <a class="topbar__support" href="https://buymeacoffee.com/freeambulanceride" target="_blank" rel="noopener">
-          Support the studio
-        </a>
         <button type="button" class="btn btn--primary" id="startBtn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="icon-camera">
             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
@@ -160,7 +129,19 @@
         <canvas id="c" class="visually-hidden"></canvas>
         
        <!-- Stage Actions Bar (replaces lonely capture button) -->
-        <div class="stage-bar" id="stageBar">
+<div class="stage-bar" id="stageBar">
+  <div class="stage-bar__group">
+    <button type="button" class="stage-bar__btn" id="btnCapture" title="Capture photo (Space)">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <circle cx="12" cy="12" r="3"/>
+      </svg>
+      <span class="stage-bar__label">Snap</span>
+    </button>
+  </div>
+  
+  <div class="stage-bar__divider"></div>
+  
   <div class="stage-bar__group">
     <button type="button" class="stage-bar__btn" id="btnGuideToggle" title="Composition guides (G)">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -229,18 +210,6 @@
         <option value="aspect-45">4:5 Portrait</option>
       </optgroup>
     </select>
-  </div>
-  
-  <div class="stage-bar__divider"></div>
-  
-  <div class="stage-bar__group">
-    <button type="button" class="stage-bar__btn" id="btnCapture" title="Capture photo (Space)">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"/>
-        <circle cx="12" cy="12" r="3"/>
-      </svg>
-      <span class="stage-bar__label">Snap</span>
-    </button>
   </div>
 </div>
 
@@ -518,7 +487,7 @@
     </div>
 
   </section>
-  <script src="composition-guides.js"></script>
+<script src="composition-guides.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

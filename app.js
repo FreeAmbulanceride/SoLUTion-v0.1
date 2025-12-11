@@ -838,25 +838,32 @@ function drawAspectMask() {
   const ctx = canvas.getContext('2d');
   const video = v;
 
-  // Match canvas size to video
-  canvas.width = video.videoWidth || canvas.clientWidth;
-  canvas.height = video.videoHeight || canvas.clientHeight;
+  // Use displayed size (what the user actually sees), not native resolution
+  const rect = video.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
 
   // Clear canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   if (currentAspectRatio === 'native') {
-    // No mask for native - full frame
-    cropBounds = { x: 0, y: 0, width: canvas.width, height: canvas.height };
+    // No mask for native - store cropBounds in video resolution coordinates
+    cropBounds = {
+      x: 0,
+      y: 0,
+      width: video.videoWidth || canvas.width,
+      height: video.videoHeight || canvas.height
+    };
     return;
   }
 
   const targetRatio = ASPECT_RATIOS[currentAspectRatio].ratio;
-  const videoRatio = canvas.width / canvas.height;
+  const displayRatio = canvas.width / canvas.height;
 
+  // Calculate crop in DISPLAY coordinates (for rendering the mask)
   let cropWidth, cropHeight, cropX, cropY;
 
-  if (targetRatio > videoRatio) {
+  if (targetRatio > displayRatio) {
     // Crop top/bottom
     cropWidth = canvas.width;
     cropHeight = canvas.width / targetRatio;
@@ -870,10 +877,19 @@ function drawAspectMask() {
     cropY = 0;
   }
 
-  // Store crop bounds for color analysis
-  cropBounds = { x: cropX, y: cropY, width: cropWidth, height: cropHeight };
+  // Convert crop bounds from display coordinates to video resolution coordinates
+  // This is for color sampling, which happens on the native video resolution
+  const scaleToVideoX = (video.videoWidth || canvas.width) / canvas.width;
+  const scaleToVideoY = (video.videoHeight || canvas.height) / canvas.height;
 
-  // Draw semi-transparent mask over areas outside crop
+  cropBounds = {
+    x: Math.round(cropX * scaleToVideoX),
+    y: Math.round(cropY * scaleToVideoY),
+    width: Math.round(cropWidth * scaleToVideoX),
+    height: Math.round(cropHeight * scaleToVideoY)
+  };
+
+  // Draw semi-transparent mask over areas outside crop (in display coordinates)
   ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
 
   // Top bar
@@ -896,7 +912,7 @@ function drawAspectMask() {
     ctx.fillRect(cropX + cropWidth, cropY, canvas.width - (cropX + cropWidth), cropHeight);
   }
 
-  // Optional: Draw border around crop area
+  // Draw border around crop area (in display coordinates)
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
   ctx.lineWidth = 2;
   ctx.strokeRect(cropX, cropY, cropWidth, cropHeight);

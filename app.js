@@ -757,8 +757,16 @@ function saliencyFromImageData(imgData,w,h){
   return { cx, cy, score, bestCorner:['tl','bl','tr','br'][bestIdx] };
 }
 function drawPhiMarker(ctx,cx,cy){
-  ctx.save(); ctx.fillStyle='rgba(0,255,180,0.9)'; ctx.strokeStyle='rgba(0,0,0,0.6)'; ctx.lineWidth=2;
-  ctx.beginPath(); ctx.arc(cx,cy,6,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
+  ctx.save();
+  // Subtle accent-colored marker instead of bright green
+  ctx.fillStyle='rgba(214, 69, 96, 0.85)';
+  ctx.strokeStyle='rgba(255,255,255,0.6)';
+  ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(cx,cy,5,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  // Inner highlight
+  ctx.fillStyle='rgba(255,255,255,0.4)';
+  ctx.beginPath(); ctx.arc(cx-1,cy-1,2,0,Math.PI*2); ctx.fill();
+  ctx.restore();
 }
 
 /* =========================
@@ -1126,18 +1134,35 @@ function loop(){
     lastLegendTs = now;
   }
 
-  // Golden HUD
+  // Golden HUD - respects aspect ratio crop bounds
   if (phiOn.checked){
-    const rect = getFrameRect();
-    drawPhiGrid(gctx, rect);
+    var phiRect = getFrameRect();
+
+    // If aspect ratio is selected, constrain HUD to the cropped area
+    if (currentAspectRatio !== 'native' && cropBounds && cropBounds.width && cropBounds.height) {
+      var phiScaleX = gcv.width / (v.videoWidth || gcv.width);
+      var phiScaleY = gcv.height / (v.videoHeight || gcv.height);
+      var phiCropX = cropBounds.x * phiScaleX;
+      var phiCropY = cropBounds.y * phiScaleY;
+      var phiCropW = cropBounds.width * phiScaleX;
+      var phiCropH = cropBounds.height * phiScaleY;
+      phiRect = {
+        x: phiRect.x + phiCropX,
+        y: phiRect.y + phiCropY,
+        w: phiCropW,
+        h: phiCropH
+      };
+    }
+
+    drawPhiGrid(gctx, phiRect);
     const { cx, cy, score:phiScore, bestCorner } = saliencyFromImageData(imgData, w, h);
-    const sx = rect.x + (cx / w) * rect.w;
-    const sy = rect.y + (cy / h) * rect.h;
+    const sx = phiRect.x + (cx / w) * phiRect.w;
+    const sy = phiRect.y + (cy / h) * phiRect.h;
     drawPhiMarker(gctx, sx, sy);
     const mode = phiSpiralSel.value;
     const fit  = $('#phiFit').value;
     const spiralCorner = mode==='auto' ? (bestCorner || 'tr') : mode;
-    if (mode!=='off') drawPhiSpiral(gctx, rect, spiralCorner, fit);
+    if (mode!=='off') drawPhiSpiral(gctx, phiRect, spiralCorner, fit);
     phiScoreEl.textContent = phiScore;
     phiScoreEl.className = 'tag ' + (phiScore>=85?'pass': phiScore<60?'fail':'warn');
   } else {

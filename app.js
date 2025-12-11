@@ -1163,6 +1163,8 @@ v.addEventListener('loadeddata', () => {
    Landing → Studio wiring
 ========================= */
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('[DEBUG] DOMContentLoaded fired - app.js is running');
+
   // lock scroll on landing
   document.body.classList.add('lock');
 
@@ -1241,7 +1243,9 @@ document.addEventListener('DOMContentLoaded', () => {
   syncPalettePanelState();
 
   // Open Studio
+  console.log('[DEBUG] Setting up openStudio button, element:', $('#openStudio'));
   $('#openStudio')?.addEventListener('click', async ()=>{
+    console.log('[DEBUG] openStudio clicked!');
     ensureAudio();
     if (!(await ensureEntitled())) return;
     const landing = $('#landing');

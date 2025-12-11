@@ -991,14 +991,31 @@ function loop(){
   drawGhost();
   drawAspectMask(); // Draw aspect ratio mask
 
- // DEBUG: Log when drawing
-  if (typeof currentGuide !== 'undefined' && currentGuide !== 'off') {
-    console.log('Drawing guide:', currentGuide, 'on rect:', getFrameRect());
-  }
-
- // Draw composition guide on the ghost canvas
+ // Draw composition guide on the ghost canvas - respects aspect ratio crop bounds
   if (typeof CompositionGuides !== 'undefined' && typeof currentGuide !== 'undefined' && currentGuide !== 'off') {
     var guideRect = getFrameRect();
+
+    // If aspect ratio is selected, constrain guides to the cropped area
+    if (currentAspectRatio !== 'native' && cropBounds && cropBounds.width && cropBounds.height) {
+      // Calculate scale from video resolution to display coordinates
+      var scaleX = gcv.width / (v.videoWidth || gcv.width);
+      var scaleY = gcv.height / (v.videoHeight || gcv.height);
+
+      // Calculate the crop area in display coordinates
+      var cropX = cropBounds.x * scaleX;
+      var cropY = cropBounds.y * scaleY;
+      var cropW = cropBounds.width * scaleX;
+      var cropH = cropBounds.height * scaleY;
+
+      // Offset by the frame rect position (for letterboxing)
+      guideRect = {
+        x: guideRect.x + cropX,
+        y: guideRect.y + cropY,
+        w: cropW,
+        h: cropH
+      };
+    }
+
     CompositionGuides.draw(gctx, guideRect, currentGuide);
   }
 
@@ -1263,13 +1280,25 @@ document.addEventListener('DOMContentLoaded', () => {
      Composition Guides Integration
      =========================  */
   var guideSelect = document.getElementById('guideSelect');
+  var btnGuideToggle = document.getElementById('btnGuideToggle');
+  var guideToggleLabel = btnGuideToggle ? btnGuideToggle.querySelector('.guides-section__toggle-label') : null;
+
+  function updateGuideToggleState() {
+    if (btnGuideToggle) {
+      btnGuideToggle.classList.toggle('active', currentGuide !== 'off');
+    }
+    if (guideToggleLabel) {
+      guideToggleLabel.textContent = currentGuide === 'off' ? 'Off' : 'On';
+    }
+  }
+
   if (guideSelect) {
     guideSelect.addEventListener('change', function() {
       currentGuide = guideSelect.value;
+      updateGuideToggleState();
     });
   }
 
-  var btnGuideToggle = document.getElementById('btnGuideToggle');
   if (btnGuideToggle) {
     btnGuideToggle.addEventListener('click', function() {
       if (currentGuide === 'off') {
@@ -1279,7 +1308,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentGuide = 'off';
         if (guideSelect) guideSelect.value = 'off';
       }
-      btnGuideToggle.classList.toggle('active', currentGuide !== 'off');
+      updateGuideToggleState();
     });
   }
 

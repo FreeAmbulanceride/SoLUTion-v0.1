@@ -814,10 +814,11 @@ function currentSatCutoff(){
   return Math.max(0, Math.min(0.99, v/100));
 }
 function refreshSatDisabledState(){
-  // Slider is only disabled in raw video mode
-  if (!satCutoffEl) return;
+  // Slider and neutrals checkbox are disabled in raw video mode
   const rawVideo = $('#rawVideo');
-  satCutoffEl.disabled = !!rawVideo?.checked;
+  const isRaw = !!rawVideo?.checked;
+  if (satCutoffEl) satCutoffEl.disabled = isRaw;
+  if (inclNeutrals) inclNeutrals.disabled = isRaw;
 }
 
 /* =========================

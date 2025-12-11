@@ -1915,12 +1915,12 @@ body.pro .control-card.pro-only .control-card__title {
    ================================ */
 .guides-section {
   width: 100%;
-  max-width: 100%;
+  max-width: 600px;
   margin: var(--space-md) auto 0;
   background: var(--surface-2);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-md);
 }
 
 .guides-section__header {
@@ -2007,25 +2007,25 @@ body.pro .control-card.pro-only .control-card__title {
   color: white;
 }
 
-/* Two-column layout for guides + palette */
+/* Centered stacked layout for guides + palette */
 .guides-section__row {
   display: flex;
+  flex-direction: column;
   gap: var(--space-md);
-  align-items: flex-start;
+  align-items: center;
+  max-width: 500px;
+  margin: 0 auto;
 }
 
 .guides-section__guides {
-  flex: 0 0 auto;
-  min-width: 180px;
-  max-width: 240px;
+  width: 100%;
+  max-width: 280px;
 }
 
 .guides-section__palette {
-  flex: 1;
-  min-width: 0;
-  padding-left: var(--space-md);
-  border-left: 1px solid var(--border-subtle);
-  overflow: hidden;
+  width: 100%;
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--border-subtle);
 }
 
 /* Override palette panel styles when nested in guides section */
@@ -2039,60 +2039,8 @@ body.pro .control-card.pro-only .control-card__title {
 }
 
 .guides-section__palette .palette-chips {
-  justify-content: flex-start;
-  gap: var(--space-xs);
-}
-
-/* Compact palette chips when in guides section */
-.guides-section__palette .palette-chip {
-  flex: 0 1 auto;
-  min-width: 90px;
-  padding: 4px;
-}
-
-.guides-section__palette .palette-chip__swatch {
-  width: 32px;
-  height: 32px;
-}
-
-.guides-section__palette .palette-chip__meta {
-  font-size: 10px;
-}
-
-.guides-section__palette .palette-chip__meta strong {
-  font-size: 11px;
-}
-
-@media (max-width: 640px) {
-  .guides-section__row {
-    gap: var(--space-sm);
-  }
-
-  .guides-section__guides {
-    min-width: 140px;
-    max-width: 160px;
-  }
-
-  .guides-section__palette {
-    padding-left: var(--space-sm);
-  }
-
-  .guides-section__palette .palette-chip {
-    min-width: 70px;
-  }
-
-  .guides-section__palette .palette-chip__swatch {
-    width: 26px;
-    height: 26px;
-  }
-
-  .guides-section__palette .palette-chip__meta {
-    font-size: 9px;
-  }
-
-  .guides-section__palette .palette-chip__meta strong {
-    font-size: 10px;
-  }
+  justify-content: center;
+  gap: var(--space-sm);
 }
 
 @media (max-width: 768px) {

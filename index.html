@@ -173,67 +173,75 @@
 
             <div class="aspect-picker__grid">
               <button type="button" class="aspect-option active" data-ratio="native">
-                <div class="aspect-option__preview" style="aspect-ratio: 16/9">
-                  <div class="aspect-option__frame"></div>
+                <div class="aspect-option__preview">
+                  <div class="aspect-option__frame" style="aspect-ratio: 16/9; width: 85%;">
+                    <span class="aspect-option__label">Native</span>
+                  </div>
                 </div>
-                <span class="aspect-option__label">Native</span>
                 <span class="aspect-option__meta">Full Frame</span>
               </button>
 
               <button type="button" class="aspect-option" data-ratio="16:9">
-                <div class="aspect-option__preview" style="aspect-ratio: 16/9">
-                  <div class="aspect-option__frame" style="aspect-ratio: 16/9"></div>
+                <div class="aspect-option__preview">
+                  <div class="aspect-option__frame" style="aspect-ratio: 16/9">
+                    <span class="aspect-option__label">16:9</span>
+                  </div>
                 </div>
-                <span class="aspect-option__label">16:9</span>
-                <span class="aspect-option__meta">Landscape Video</span>
+                <span class="aspect-option__meta">Landscape</span>
               </button>
 
               <button type="button" class="aspect-option" data-ratio="9:16">
-                <div class="aspect-option__preview" style="aspect-ratio: 16/9">
-                  <div class="aspect-option__frame" style="aspect-ratio: 9/16"></div>
+                <div class="aspect-option__preview">
+                  <div class="aspect-option__frame" style="aspect-ratio: 9/16">
+                    <span class="aspect-option__label">9:16</span>
+                  </div>
                 </div>
-                <span class="aspect-option__label">9:16</span>
-                <span class="aspect-option__meta">Stories/Reels</span>
+                <span class="aspect-option__meta">Stories</span>
               </button>
 
               <button type="button" class="aspect-option" data-ratio="4:3">
-                <div class="aspect-option__preview" style="aspect-ratio: 16/9">
-                  <div class="aspect-option__frame" style="aspect-ratio: 4/3"></div>
+                <div class="aspect-option__preview">
+                  <div class="aspect-option__frame" style="aspect-ratio: 4/3">
+                    <span class="aspect-option__label">4:3</span>
+                  </div>
                 </div>
-                <span class="aspect-option__label">4:3</span>
-                <span class="aspect-option__meta">Classic Photo</span>
+                <span class="aspect-option__meta">Classic</span>
               </button>
 
               <button type="button" class="aspect-option" data-ratio="1:1">
-                <div class="aspect-option__preview" style="aspect-ratio: 16/9">
-                  <div class="aspect-option__frame" style="aspect-ratio: 1/1"></div>
+                <div class="aspect-option__preview">
+                  <div class="aspect-option__frame" style="aspect-ratio: 1/1">
+                    <span class="aspect-option__label">1:1</span>
+                  </div>
                 </div>
-                <span class="aspect-option__label">1:1</span>
                 <span class="aspect-option__meta">Square</span>
               </button>
 
               <button type="button" class="aspect-option" data-ratio="4:5">
-                <div class="aspect-option__preview" style="aspect-ratio: 16/9">
-                  <div class="aspect-option__frame" style="aspect-ratio: 4/5"></div>
+                <div class="aspect-option__preview">
+                  <div class="aspect-option__frame" style="aspect-ratio: 4/5">
+                    <span class="aspect-option__label">4:5</span>
+                  </div>
                 </div>
-                <span class="aspect-option__label">4:5</span>
-                <span class="aspect-option__meta">Portrait Photo</span>
+                <span class="aspect-option__meta">Portrait</span>
               </button>
 
               <button type="button" class="aspect-option" data-ratio="2.35:1">
-                <div class="aspect-option__preview" style="aspect-ratio: 16/9">
-                  <div class="aspect-option__frame" style="aspect-ratio: 2.35/1"></div>
+                <div class="aspect-option__preview">
+                  <div class="aspect-option__frame" style="aspect-ratio: 2.35/1">
+                    <span class="aspect-option__label">2.35:1</span>
+                  </div>
                 </div>
-                <span class="aspect-option__label">2.35:1</span>
-                <span class="aspect-option__meta">Cinemascope</span>
+                <span class="aspect-option__meta">Cinema</span>
               </button>
 
               <button type="button" class="aspect-option" data-ratio="3:2">
-                <div class="aspect-option__preview" style="aspect-ratio: 16/9">
-                  <div class="aspect-option__frame" style="aspect-ratio: 3/2"></div>
+                <div class="aspect-option__preview">
+                  <div class="aspect-option__frame" style="aspect-ratio: 3/2">
+                    <span class="aspect-option__label">3:2</span>
+                  </div>
                 </div>
-                <span class="aspect-option__label">3:2</span>
-                <span class="aspect-option__meta">35mm Film</span>
+                <span class="aspect-option__meta">35mm</span>
               </button>
             </div>
           </div>
@@ -252,72 +260,91 @@
 
       </div>
 
-      <!-- Composition Guides Section -->
+      <!-- Composition Guides & Palette Section -->
       <div class="guides-section" id="guidesSection">
-        <div class="guides-section__header">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2"/>
-            <line x1="3" y1="9" x2="21" y2="9"/>
-            <line x1="3" y1="15" x2="21" y2="15"/>
-            <line x1="9" y1="3" x2="9" y2="21"/>
-            <line x1="15" y1="3" x2="15" y2="21"/>
-          </svg>
-          <span class="guides-section__title">Composition Guides</span>
-          <button type="button" class="guides-section__toggle" id="btnGuideToggle" title="Toggle guides (G)">
-            <span class="guides-section__toggle-label">Off</span>
-          </button>
-        </div>
+        <div class="guides-section__row">
+          <div class="guides-section__guides">
+            <div class="guides-section__header">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <line x1="3" y1="9" x2="21" y2="9"/>
+                <line x1="3" y1="15" x2="21" y2="15"/>
+                <line x1="9" y1="3" x2="9" y2="21"/>
+                <line x1="15" y1="3" x2="15" y2="21"/>
+              </svg>
+              <span class="guides-section__title">Composition Guides</span>
+              <button type="button" class="guides-section__toggle" id="btnGuideToggle" title="Toggle guides (G)">
+                <span class="guides-section__toggle-label">Off</span>
+              </button>
+            </div>
 
-        <div class="guides-section__body">
-          <select id="guideSelect" class="guides-section__select" title="Select composition guide">
-            <optgroup label="Off">
-              <option value="off" selected>No Guide</option>
-            </optgroup>
-            <optgroup label="Classic Grids">
-              <option value="thirds">Rule of Thirds</option>
-              <option value="phi">Phi Grid (Golden Ratio)</option>
-              <option value="quadrant">Quadrant Grid</option>
-              <option value="center">Center Cross</option>
-            </optgroup>
-            <optgroup label="Golden Ratio">
-              <option value="golden-spiral-tl">Golden Spiral ↖</option>
-              <option value="golden-spiral-tr">Golden Spiral ↗</option>
-              <option value="golden-spiral-bl">Golden Spiral ↙</option>
-              <option value="golden-spiral-br">Golden Spiral ↘</option>
-            </optgroup>
-            <optgroup label="Triangles &amp; Diagonals">
-              <option value="golden-triangles">Golden Triangles</option>
-              <option value="diagonal">Diagonal Lines</option>
-              <option value="diagonal-baroque">Baroque Diagonal →↘</option>
-              <option value="diagonal-sinister">Sinister Diagonal ←↙</option>
-            </optgroup>
-            <optgroup label="Dynamic Symmetry">
-              <option value="rabatment">Rabatment</option>
-              <option value="root2">√2 Rectangle</option>
-              <option value="root3">√3 Rectangle</option>
-              <option value="root4">√4 Rectangle</option>
-              <option value="root5">√5 Rectangle (Phi)</option>
-            </optgroup>
-            <optgroup label="Perspective">
-              <option value="perspective-1">1-Point Perspective</option>
-              <option value="perspective-2">2-Point Perspective</option>
-              <option value="perspective-3">3-Point Perspective</option>
-            </optgroup>
-            <optgroup label="Curves &amp; Shapes">
-              <option value="s-curve">S-Curve</option>
-              <option value="triangle">Triangle</option>
-              <option value="circle">Central Circle</option>
-              <option value="diamond">Diamond</option>
-            </optgroup>
-            <optgroup label="Portrait &amp; Framing">
-              <option value="headroom">Headroom Guide</option>
-              <option value="nose-room">Nose/Look Room</option>
-            </optgroup>
-            <optgroup label="Cinema Safe Zones">
-              <option value="safe-action">Safe Action (90%)</option>
-              <option value="safe-title">Safe Title (80%)</option>
-            </optgroup>
-          </select>
+            <div class="guides-section__body">
+              <select id="guideSelect" class="guides-section__select" title="Select composition guide">
+                <optgroup label="Off">
+                  <option value="off" selected>No Guide</option>
+                </optgroup>
+                <optgroup label="Classic Grids">
+                  <option value="thirds">Rule of Thirds</option>
+                  <option value="phi">Phi Grid (Golden Ratio)</option>
+                  <option value="quadrant">Quadrant Grid</option>
+                  <option value="center">Center Cross</option>
+                </optgroup>
+                <optgroup label="Golden Ratio">
+                  <option value="golden-spiral-tl">Golden Spiral ↖</option>
+                  <option value="golden-spiral-tr">Golden Spiral ↗</option>
+                  <option value="golden-spiral-bl">Golden Spiral ↙</option>
+                  <option value="golden-spiral-br">Golden Spiral ↘</option>
+                </optgroup>
+                <optgroup label="Triangles &amp; Diagonals">
+                  <option value="golden-triangles">Golden Triangles</option>
+                  <option value="diagonal">Diagonal Lines</option>
+                  <option value="diagonal-baroque">Baroque Diagonal →↘</option>
+                  <option value="diagonal-sinister">Sinister Diagonal ←↙</option>
+                </optgroup>
+                <optgroup label="Dynamic Symmetry">
+                  <option value="rabatment">Rabatment</option>
+                  <option value="root2">√2 Rectangle</option>
+                  <option value="root3">√3 Rectangle</option>
+                  <option value="root4">√4 Rectangle</option>
+                  <option value="root5">√5 Rectangle (Phi)</option>
+                </optgroup>
+                <optgroup label="Perspective">
+                  <option value="perspective-1">1-Point Perspective</option>
+                  <option value="perspective-2">2-Point Perspective</option>
+                  <option value="perspective-3">3-Point Perspective</option>
+                </optgroup>
+                <optgroup label="Curves &amp; Shapes">
+                  <option value="s-curve">S-Curve</option>
+                  <option value="triangle">Triangle</option>
+                  <option value="circle">Central Circle</option>
+                  <option value="diamond">Diamond</option>
+                </optgroup>
+                <optgroup label="Portrait &amp; Framing">
+                  <option value="headroom">Headroom Guide</option>
+                  <option value="nose-room">Nose/Look Room</option>
+                </optgroup>
+                <optgroup label="Cinema Safe Zones">
+                  <option value="safe-action">Safe Action (90%)</option>
+                  <option value="safe-title">Safe Title (80%)</option>
+                </optgroup>
+              </select>
+            </div>
+          </div>
+
+          <div class="guides-section__palette">
+            <div class="palette-panel" id="palettePanel" aria-live="polite">
+              <div class="palette-panel__header">
+                <span class="palette-panel__title">Palette</span>
+                <div class="palette-panel__actions">
+                  <button type="button" class="btn btn--ghost btn--sm" id="paletteToggle" aria-expanded="false">Show</button>
+                  <button type="button" class="btn btn--ghost btn--sm" id="paletteExport">Copy</button>
+                </div>
+              </div>
+              <div class="palette-chips" id="paletteChips" aria-label="Detected palette colors">
+                <!-- Palette chips injected by JS -->
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -539,19 +566,6 @@
         <!-- Color Bars (dynamically populated by JS) -->
         <div class="color-bars" id="bars">
           <!-- JS will inject .bar elements here -->
-        </div>
-
-        <div class="palette-panel" id="palettePanel" aria-live="polite">
-          <div class="palette-panel__header">
-            <span class="palette-panel__title">Palette chips</span>
-            <div class="palette-panel__actions">
-              <button type="button" class="btn btn--ghost btn--sm" id="paletteToggle" aria-expanded="false">Show</button>
-              <button type="button" class="btn btn--ghost btn--sm" id="paletteExport">Copy palette</button>
-            </div>
-          </div>
-          <div class="palette-chips" id="paletteChips" aria-label="Detected palette colors">
-            <!-- Palette chips injected by JS -->
-          </div>
         </div>
 
         <!-- Stats -->

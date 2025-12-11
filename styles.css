@@ -1053,15 +1053,20 @@ input[type="file"]::file-selector-button:hover {
    Aspect Ratio Picker (Fullscreen Modal)
    -------------------------------- */
 .aspect-picker {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 150;
-  display: grid;
-  place-items: center;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   padding: var(--space-xl);
+  padding-top: calc(var(--space-xl) + var(--safe-top, 0px));
+  padding-bottom: calc(var(--space-xl) + var(--safe-bottom, 0px));
   background: rgba(7, 9, 15, 0.98);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   animation: aspect-picker-in var(--duration-normal) var(--ease-out);
 }
 
@@ -1077,12 +1082,13 @@ input[type="file"]::file-selector-button:hover {
 }
 
 .aspect-picker__content {
-  max-width: 680px;
+  max-width: 480px;
   width: 100%;
+  margin: auto;
 }
 
 .aspect-picker__title {
-  font-size: var(--text-2xl);
+  font-size: var(--text-xl);
   font-weight: 700;
   text-align: center;
   margin-bottom: var(--space-xs);
@@ -1096,23 +1102,23 @@ input[type="file"]::file-selector-button:hover {
   text-align: center;
   color: var(--text-muted);
   font-size: var(--text-sm);
-  margin-bottom: var(--space-2xl);
+  margin-bottom: var(--space-lg);
 }
 
 .aspect-picker__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: var(--space-md);
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-sm);
 }
 
 @media (max-width: 640px) {
   .aspect-picker {
-    padding: var(--space-lg);
+    padding: var(--space-md);
   }
 
   .aspect-picker__grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-sm);
+    gap: var(--space-xs);
   }
 }
 
@@ -1123,8 +1129,8 @@ input[type="file"]::file-selector-button:hover {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-md);
+  gap: var(--space-xs);
+  padding: var(--space-xs);
   background: var(--surface-1);
   border: 2px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -1148,37 +1154,55 @@ input[type="file"]::file-selector-button:hover {
 .aspect-option.active {
   background: var(--accent-muted);
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-muted);
+  box-shadow: 0 0 0 2px var(--accent-muted);
 }
 
 .aspect-option__preview {
   position: relative;
   width: 100%;
+  aspect-ratio: 4/3;
   background: var(--bg-elevated);
   border-radius: var(--radius-sm);
   overflow: hidden;
   display: grid;
   place-items: center;
-  padding: var(--space-sm);
 }
 
 .aspect-option__frame {
-  width: 90%;
-  background: var(--accent-muted);
+  position: absolute;
+  background: transparent;
   border: 2px solid var(--accent);
   border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 85%;
+  max-height: 85%;
 }
 
+/* Size frames based on their aspect ratio */
+.aspect-option__frame[style*="16/9"] { width: 85%; height: auto; aspect-ratio: 16/9; }
+.aspect-option__frame[style*="9/16"] { height: 85%; width: auto; aspect-ratio: 9/16; }
+.aspect-option__frame[style*="4/3"] { width: 80%; height: auto; aspect-ratio: 4/3; }
+.aspect-option__frame[style*="1/1"] { width: 65%; height: auto; aspect-ratio: 1/1; }
+.aspect-option__frame[style*="4/5"] { height: 80%; width: auto; aspect-ratio: 4/5; }
+.aspect-option__frame[style*="2.35/1"] { width: 90%; height: auto; aspect-ratio: 2.35/1; }
+.aspect-option__frame[style*="3/2"] { width: 80%; height: auto; aspect-ratio: 3/2; }
+
 .aspect-option__label {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--text-primary);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
   font-family: var(--font-mono);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  pointer-events: none;
 }
 
 .aspect-option__meta {
-  font-size: var(--text-xs);
+  font-size: 9px;
   color: var(--text-muted);
+  text-align: center;
+  line-height: 1.2;
 }
 
 
@@ -1861,12 +1885,12 @@ body.pro .control-card.pro-only .control-card__title {
    ================================ */
 .guides-section {
   width: 100%;
-  max-width: 600px;
+  max-width: 900px;
   margin: var(--space-md) auto 0;
   background: var(--surface-2);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-md);
 }
 
 .guides-section__header {
@@ -1951,6 +1975,71 @@ body.pro .control-card.pro-only .control-card__title {
 .guides-section__select optgroup {
   background: #1C2333;
   color: white;
+}
+
+/* Two-column layout for guides + palette on desktop */
+.guides-section__row {
+  display: flex;
+  gap: var(--space-lg);
+  align-items: flex-start;
+}
+
+.guides-section__guides {
+  flex: 0 0 220px;
+  min-width: 0;
+}
+
+.guides-section__palette {
+  flex: 1;
+  min-width: 0;
+  padding-left: var(--space-lg);
+  border-left: 1px solid var(--border-subtle);
+}
+
+/* Override palette panel styles when nested in guides section */
+.guides-section__palette .palette-panel {
+  margin-top: 0;
+  max-width: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+.guides-section__palette .palette-chips {
+  justify-content: flex-start;
+}
+
+@media (max-width: 1024px) {
+  .guides-section {
+    max-width: 100%;
+  }
+
+  .guides-section__row {
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .guides-section__guides {
+    flex: none;
+    width: 100%;
+  }
+
+  .guides-section__palette {
+    width: 100%;
+    padding-left: 0;
+    padding-top: var(--space-md);
+    border-left: none;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .guides-section__palette .palette-panel {
+    max-width: 100%;
+  }
+
+  .guides-section__palette .palette-chips {
+    justify-content: center;
+  }
 }
 
 @media (max-width: 768px) {

@@ -355,6 +355,36 @@ a:hover {
   gap: var(--space-lg);
 }
 
+/* Hints & Info */
+.field__hint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+.field__hint--indent {
+  margin-left: calc(18px + var(--space-sm)); /* Checkbox width + gap */
+  margin-top: -4px;
+  margin-bottom: var(--space-sm);
+}
+
+.field__info {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  padding: var(--space-sm);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-sm);
+  border-left: 2px solid var(--accent-muted);
+  margin-bottom: var(--space-sm);
+}
+
+.field__info strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
 /* Select */
 .field__select,
 select {
@@ -1885,12 +1915,12 @@ body.pro .control-card.pro-only .control-card__title {
    ================================ */
 .guides-section {
   width: 100%;
-  max-width: 900px;
+  max-width: 100%;
   margin: var(--space-md) auto 0;
   background: var(--surface-2);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
 }
 
 .guides-section__header {
@@ -1977,23 +2007,25 @@ body.pro .control-card.pro-only .control-card__title {
   color: white;
 }
 
-/* Two-column layout for guides + palette on desktop */
+/* Two-column layout for guides + palette */
 .guides-section__row {
   display: flex;
-  gap: var(--space-lg);
+  gap: var(--space-md);
   align-items: flex-start;
 }
 
 .guides-section__guides {
-  flex: 0 0 220px;
-  min-width: 0;
+  flex: 0 0 auto;
+  min-width: 180px;
+  max-width: 240px;
 }
 
 .guides-section__palette {
   flex: 1;
   min-width: 0;
-  padding-left: var(--space-lg);
+  padding-left: var(--space-md);
   border-left: 1px solid var(--border-subtle);
+  overflow: hidden;
 }
 
 /* Override palette panel styles when nested in guides section */
@@ -2008,37 +2040,58 @@ body.pro .control-card.pro-only .control-card__title {
 
 .guides-section__palette .palette-chips {
   justify-content: flex-start;
+  gap: var(--space-xs);
 }
 
-@media (max-width: 1024px) {
-  .guides-section {
-    max-width: 100%;
-  }
+/* Compact palette chips when in guides section */
+.guides-section__palette .palette-chip {
+  flex: 0 1 auto;
+  min-width: 90px;
+  padding: 4px;
+}
 
+.guides-section__palette .palette-chip__swatch {
+  width: 32px;
+  height: 32px;
+}
+
+.guides-section__palette .palette-chip__meta {
+  font-size: 10px;
+}
+
+.guides-section__palette .palette-chip__meta strong {
+  font-size: 11px;
+}
+
+@media (max-width: 640px) {
   .guides-section__row {
-    flex-direction: column;
-    gap: var(--space-md);
+    gap: var(--space-sm);
   }
 
   .guides-section__guides {
-    flex: none;
-    width: 100%;
+    min-width: 140px;
+    max-width: 160px;
   }
 
   .guides-section__palette {
-    width: 100%;
-    padding-left: 0;
-    padding-top: var(--space-md);
-    border-left: none;
-    border-top: 1px solid var(--border-subtle);
+    padding-left: var(--space-sm);
   }
 
-  .guides-section__palette .palette-panel {
-    max-width: 100%;
+  .guides-section__palette .palette-chip {
+    min-width: 70px;
   }
 
-  .guides-section__palette .palette-chips {
-    justify-content: center;
+  .guides-section__palette .palette-chip__swatch {
+    width: 26px;
+    height: 26px;
+  }
+
+  .guides-section__palette .palette-chip__meta {
+    font-size: 9px;
+  }
+
+  .guides-section__palette .palette-chip__meta strong {
+    font-size: 10px;
   }
 }
 

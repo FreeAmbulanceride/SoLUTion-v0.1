@@ -362,10 +362,11 @@
           </h3>
           <div class="control-card__body">
             <label class="field">
-              <span class="field__label">Source</span>
+              <span class="field__label">Video Source</span>
               <select id="device" class="field__select">
                 <option value="">Select camera...</option>
               </select>
+              <span class="field__hint">Webcam, phone camera, or capture card</span>
             </label>
           </div>
         </div>
@@ -380,26 +381,29 @@
               <circle cx="6.5" cy="12.5" r="2.5"/>
               <path d="M12 22c-4.97 0-9-2.24-9-5v-.09c0-1.79 2.69-3.3 6.5-4.02L12 22l2.5-9.11c3.81.72 6.5 2.23 6.5 4.02V17c0 2.76-4.03 5-9 5z"/>
             </svg>
-            Detection
+            Color Detection
           </h3>
           <div class="control-card__body">
+            <div class="field__info">
+              Analyzes your frame for <strong>3 dominant colors</strong> and measures how close they match the 60/30/10 ratio.
+            </div>
+
             <label class="field field--inline">
               <input type="checkbox" id="inclNeutrals" class="field__checkbox">
-              <span class="field__label">Include neutrals</span>
+              <span class="field__label">Include grays &amp; whites</span>
             </label>
-            
+            <span class="field__hint field__hint--indent">Count neutral tones in the analysis</span>
+
             <label class="field">
-              <span class="field__label">Clusters (K=3)</span>
-              <span class="field__value" id="kval">3</span>
-            </label>
-            
-            <label class="field">
-              <span class="field__label">Min Saturation</span>
+              <span class="field__label">Color Sensitivity</span>
               <div class="field__row">
                 <input type="range" id="satCutoff" min="0" max="40" value="12" class="field__range">
                 <output id="satCutoffVal" class="field__output">0.12</output>
               </div>
+              <span class="field__hint">Higher = ignore dull colors, focus on vivid ones</span>
             </label>
+
+            <span class="field__value visually-hidden" id="kval">3</span>
           </div>
         </div>
 
@@ -411,26 +415,31 @@
               <circle cx="8.5" cy="8.5" r="1.5"/>
               <polyline points="21 15 16 10 5 21"/>
             </svg>
-            Reference
+            Reference Overlay
           </h3>
           <div class="control-card__body">
+            <div class="field__info">
+              Overlay a reference image on your live feed to match shots, angles, or compositions.
+            </div>
+
             <div class="field">
+              <span class="field__label">Load Reference</span>
               <input type="file" id="refUpload" accept="image/*" class="field__file">
             </div>
             <button type="button" class="btn btn--sm btn--secondary" id="grabRef">
-              Capture Current Frame
+              Use Current Frame
             </button>
-            
+
             <label class="field">
-              <span class="field__label">Blend Mode</span>
+              <span class="field__label">Overlay Style</span>
               <select id="overlayMode" class="field__select">
-                <option value="overlay">Ghost</option>
-                <option value="wipe">Split/Wipe</option>
+                <option value="overlay">Ghost (transparent)</option>
+                <option value="wipe">Split Screen</option>
               </select>
             </label>
-            
+
             <label class="field">
-              <span class="field__label">Opacity</span>
+              <span class="field__label">Visibility</span>
               <div class="field__row">
                 <input type="range" id="alpha" min="0" max="100" value="35" class="field__range">
                 <output class="field__output">35%</output>
@@ -450,41 +459,45 @@
               <line x1="2" y1="12" x2="22" y2="12"/>
               <line x1="12" y1="2" x2="12" y2="22"/>
             </svg>
-            Transform
+            Reference Position
           </h3>
           <div class="control-card__body">
+            <div class="field__info">
+              Adjust the reference image to align with your live feed. Use arrow keys for fine control.
+            </div>
+
             <label class="field">
-              <span class="field__label">Scale</span>
+              <span class="field__label">Size</span>
               <div class="field__row">
                 <input type="range" id="scale" min="50" max="200" value="100" class="field__range">
                 <output class="field__output">100%</output>
               </div>
             </label>
-            
+
             <div class="field__grid">
               <label class="field">
-                <span class="field__label">X Offset</span>
+                <span class="field__label">Left / Right</span>
                 <input type="range" id="offx" min="-200" max="200" value="0" class="field__range">
               </label>
               <label class="field">
-                <span class="field__label">Y Offset</span>
+                <span class="field__label">Up / Down</span>
                 <input type="range" id="offy" min="-200" max="200" value="0" class="field__range">
               </label>
             </div>
-            
+
             <div class="field__row field__row--switches">
               <label class="field field--inline">
                 <input type="checkbox" id="flip" class="field__checkbox">
-                <span class="field__label">Flip</span>
+                <span class="field__label">Mirror</span>
               </label>
               <label class="field field--inline">
                 <input type="checkbox" id="grid" class="field__checkbox">
-                <span class="field__label">Grid</span>
+                <span class="field__label">Show Grid</span>
               </label>
             </div>
-            
+
             <label class="field" id="wipeWrap" style="display: none;">
-              <span class="field__label">Wipe Position</span>
+              <span class="field__label">Split Position</span>
               <input type="range" id="wipe" min="0" max="100" value="50" class="field__range">
             </label>
           </div>
@@ -501,57 +514,62 @@
               <path d="M9 3v18"/>
               <path d="M15 3v18"/>
             </svg>
-            Golden Ratio
+            Golden Ratio HUD
           </h3>
           <div class="control-card__body">
+            <div class="field__info">
+              Advanced composition analysis using the golden ratio (1.618). Shows where visual interest falls in your frame.
+            </div>
+
             <label class="field field--inline">
               <input type="checkbox" id="phiOn" class="field__checkbox">
-              <span class="field__label">Show HUD</span>
+              <span class="field__label">Enable Analysis</span>
             </label>
-            
+
             <label class="field">
-              <span class="field__label">Spiral</span>
+              <span class="field__label">Spiral Overlay</span>
               <select id="phiSpiral" class="field__select">
-                <option value="off">Off</option>
-                <option value="auto">Auto Detect</option>
-                <option value="tl">Top Left</option>
-                <option value="tr">Top Right</option>
-                <option value="bl">Bottom Left</option>
-                <option value="br">Bottom Right</option>
+                <option value="off">Hidden</option>
+                <option value="auto">Auto (follows subject)</option>
+                <option value="tl">Top Left Origin</option>
+                <option value="tr">Top Right Origin</option>
+                <option value="bl">Bottom Left Origin</option>
+                <option value="br">Bottom Right Origin</option>
               </select>
             </label>
-            
+
             <label class="field">
-              <span class="field__label">Fit Mode</span>
+              <span class="field__label">Spiral Size</span>
               <select id="phiFit" class="field__select">
-                <option value="inscribe">Fit Inside</option>
-                <option value="cover">Cover Frame</option>
+                <option value="inscribe">Fit Inside Frame</option>
+                <option value="cover">Fill Entire Frame</option>
               </select>
             </label>
-            
+
             <div class="field__grid">
               <label class="field">
-                <span class="field__label">Quality %</span>
+                <span class="field__label">Precision</span>
                 <div class="field__row">
                   <input type="range" id="phiQ" min="1" max="20" value="5" class="field__range">
                   <output class="field__output">5%</output>
                 </div>
               </label>
               <label class="field">
-                <span class="field__label">Sat Weight</span>
+                <span class="field__label">Color Weight</span>
                 <div class="field__row">
                   <input type="range" id="satW" min="0" max="100" value="50" class="field__range">
                   <output class="field__output">50%</output>
                 </div>
               </label>
             </div>
-            
+
             <label class="field">
-              <span class="field__label">Sat Curve</span>
+              <span class="field__label">Color Curve</span>
               <div class="field__row">
                 <input type="range" id="satG" min="50" max="200" value="100" class="field__range">
                 <output class="field__output">100</output>
               </div>
+              <span class="field__hint">How strongly vivid colors attract attention</span>
             </label>
           </div>
         </div>

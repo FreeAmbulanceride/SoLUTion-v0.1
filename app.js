@@ -19,6 +19,22 @@ const INCL_NEUTRALS_KEY = 'inclNeutrals6010';
 var currentGuide = 'off';
 
 /* =========================
+   Aspect Ratio System
+========================= */
+const ASPECT_RATIOS = {
+  'native': { ratio: null, label: 'Native' },
+  '16:9': { ratio: 16 / 9, label: '16:9' },
+  '9:16': { ratio: 9 / 16, label: '9:16' },
+  '4:3': { ratio: 4 / 3, label: '4:3' },
+  '1:1': { ratio: 1, label: '1:1' },
+  '4:5': { ratio: 4 / 5, label: '4:5' },
+  '2.35:1': { ratio: 2.35, label: '2.35:1' },
+  '3:2': { ratio: 3 / 2, label: '3:2' }
+};
+let currentAspectRatio = 'native';
+let cropBounds = null; // { x, y, width, height } - for color sampling
+
+/* =========================
    Tiny helpers
 ========================= */
 function markProOnly(selectors){
@@ -800,6 +816,149 @@ let lastMean=null;
 function sceneCut(mean, th=12){ if(!lastMean){lastMean=mean;return false;} const d=Math.hypot(mean[0]-lastMean[0],mean[1]-lastMean[1],mean[2]-lastMean[2]); lastMean=mean; return d>th; }
 function kmeansFrame(pixels, k=3, maxIter=8){ return kmeans(pixels,k,maxIter); }
 
+/* =========================
+   Aspect Ratio Functions
+========================= */
+function applyAspectRatio(ratioKey) {
+  currentAspectRatio = ratioKey;
+  const config = ASPECT_RATIOS[ratioKey];
+
+  // Update chip label
+  const aspectChipLabel = document.querySelector('#aspectChip .aspect-chip__label');
+  if (aspectChipLabel) aspectChipLabel.textContent = config.label;
+
+  // Calculate and draw mask
+  drawAspectMask();
+}
+
+function drawAspectMask() {
+  const canvas = $('#aspectMask');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  const video = v;
+
+  // Match canvas size to video
+  canvas.width = video.videoWidth || canvas.clientWidth;
+  canvas.height = video.videoHeight || canvas.clientHeight;
+
+  // Clear canvas
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (currentAspectRatio === 'native') {
+    // No mask for native - full frame
+    cropBounds = { x: 0, y: 0, width: canvas.width, height: canvas.height };
+    return;
+  }
+
+  const targetRatio = ASPECT_RATIOS[currentAspectRatio].ratio;
+  const videoRatio = canvas.width / canvas.height;
+
+  let cropWidth, cropHeight, cropX, cropY;
+
+  if (targetRatio > videoRatio) {
+    // Crop top/bottom
+    cropWidth = canvas.width;
+    cropHeight = canvas.width / targetRatio;
+    cropX = 0;
+    cropY = (canvas.height - cropHeight) / 2;
+  } else {
+    // Crop left/right
+    cropHeight = canvas.height;
+    cropWidth = canvas.height * targetRatio;
+    cropX = (canvas.width - cropWidth) / 2;
+    cropY = 0;
+  }
+
+  // Store crop bounds for color analysis
+  cropBounds = { x: cropX, y: cropY, width: cropWidth, height: cropHeight };
+
+  // Draw semi-transparent mask over areas outside crop
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+
+  // Top bar
+  if (cropY > 0) {
+    ctx.fillRect(0, 0, canvas.width, cropY);
+  }
+
+  // Bottom bar
+  if (cropY + cropHeight < canvas.height) {
+    ctx.fillRect(0, cropY + cropHeight, canvas.width, canvas.height - (cropY + cropHeight));
+  }
+
+  // Left bar
+  if (cropX > 0) {
+    ctx.fillRect(0, cropY, cropX, cropHeight);
+  }
+
+  // Right bar
+  if (cropX + cropWidth < canvas.width) {
+    ctx.fillRect(cropX + cropWidth, cropY, canvas.width - (cropX + cropWidth), cropHeight);
+  }
+
+  // Optional: Draw border around crop area
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(cropX, cropY, cropWidth, cropHeight);
+}
+
+function initAspectRatioSystem() {
+  const aspectPicker = $('#aspectPicker');
+  const aspectChip = $('#aspectChip');
+
+  if (!aspectPicker || !aspectChip) return;
+
+  // Check if user has seen picker before
+  const savedRatio = localStorage.getItem('aspectRatio') || 'native';
+  const hasSeenPicker = localStorage.getItem('hasSeenAspectPicker');
+
+  currentAspectRatio = savedRatio;
+
+  // Show picker on first use
+  if (!hasSeenPicker) {
+    aspectPicker.hidden = false;
+    localStorage.setItem('hasSeenAspectPicker', 'true');
+  } else {
+    // Just apply saved ratio
+    applyAspectRatio(savedRatio);
+    aspectChip.hidden = false;
+  }
+
+  // Handle option clicks in picker
+  aspectPicker.addEventListener('click', (e) => {
+    const option = e.target.closest('.aspect-option');
+    if (!option) return;
+
+    const ratio = option.dataset.ratio;
+
+    // Update active state
+    aspectPicker.querySelectorAll('.aspect-option').forEach(opt => {
+      opt.classList.remove('active');
+    });
+    option.classList.add('active');
+
+    // Apply ratio
+    applyAspectRatio(ratio);
+
+    // Save preference
+    localStorage.setItem('aspectRatio', ratio);
+
+    // Close picker, show chip
+    aspectPicker.hidden = true;
+    aspectChip.hidden = false;
+  });
+
+  // Handle chip click - reopen picker
+  aspectChip.addEventListener('click', () => {
+    aspectPicker.hidden = false;
+
+    // Highlight current selection
+    aspectPicker.querySelectorAll('.aspect-option').forEach(opt => {
+      opt.classList.toggle('active', opt.dataset.ratio === currentAspectRatio);
+    });
+  });
+}
+
 function grade6010(pcts){
   const a=[...pcts].sort((x,y)=>y-x).slice(0,3);
   const diffs=a.map((v,i)=>Math.abs(v-[60,30,10][i]));
@@ -814,6 +973,7 @@ function loop(){
   if (v.videoWidth === 0){ requestAnimationFrame(loop); return; }
 
   drawGhost();
+  drawAspectMask(); // Draw aspect ratio mask
 
  // DEBUG: Log when drawing
   if (typeof currentGuide !== 'undefined' && currentGuide !== 'off') {
@@ -837,7 +997,21 @@ function loop(){
   ctx.drawImage(v, 0, 0, w, h);
   ctx.filter = 'none';
 
-  const imgData = ctx.getImageData(0,0,w,h);
+  // Aspect ratio crop bounds (scaled to downscaled canvas)
+  let sampleBounds = { x: 0, y: 0, width: w, height: h };
+  if (cropBounds && cropBounds.width && cropBounds.height) {
+    // Scale crop bounds from video resolution to downscaled canvas
+    const scaleFactorX = w / v.videoWidth;
+    const scaleFactorY = h / v.videoHeight;
+    sampleBounds = {
+      x: Math.round(cropBounds.x * scaleFactorX),
+      y: Math.round(cropBounds.y * scaleFactorY),
+      width: Math.round(cropBounds.width * scaleFactorX),
+      height: Math.round(cropBounds.height * scaleFactorY)
+    };
+  }
+
+  const imgData = ctx.getImageData(sampleBounds.x, sampleBounds.y, sampleBounds.width, sampleBounds.height);
   const data    = imgData.data;
 
   // sparse mean for scene-change detection
@@ -943,7 +1117,10 @@ function loop(){
     : requestAnimationFrame(loop);
 }
 
-v.addEventListener('loadeddata', loop);
+v.addEventListener('loadeddata', () => {
+  initAspectRatioSystem();
+  loop();
+});
 
 
 

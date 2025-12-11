@@ -990,15 +990,195 @@ input[type="file"]::file-selector-button:hover {
   .stage {
     border-radius: var(--radius-md);
   }
-  
+
   .stage video,
   .stage__overlay {
     border-radius: var(--radius-md);
   }
-  
+
   .stage__actions {
     bottom: var(--space-md);
   }
+}
+
+/* --------------------------------
+   Aspect Ratio Chip
+   -------------------------------- */
+.aspect-chip {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-md);
+  background: rgba(22, 27, 38, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.aspect-chip:hover {
+  background: rgba(28, 35, 51, 0.98);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.aspect-chip:active {
+  transform: scale(0.98);
+}
+
+.aspect-chip svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.aspect-chip__label {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* --------------------------------
+   Aspect Ratio Picker (Fullscreen Modal)
+   -------------------------------- */
+.aspect-picker {
+  position: absolute;
+  inset: 0;
+  z-index: 150;
+  display: grid;
+  place-items: center;
+  padding: var(--space-xl);
+  background: rgba(7, 9, 15, 0.98);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  animation: aspect-picker-in var(--duration-normal) var(--ease-out);
+}
+
+@keyframes aspect-picker-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.aspect-picker__content {
+  max-width: 680px;
+  width: 100%;
+}
+
+.aspect-picker__title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: var(--space-xs);
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.aspect-picker__subtitle {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-2xl);
+}
+
+.aspect-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-md);
+}
+
+@media (max-width: 640px) {
+  .aspect-picker {
+    padding: var(--space-lg);
+  }
+
+  .aspect-picker__grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm);
+  }
+}
+
+/* --------------------------------
+   Aspect Ratio Option Card
+   -------------------------------- */
+.aspect-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--surface-1);
+  border: 2px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.aspect-option:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  transform: translateY(-2px);
+}
+
+.aspect-option:active {
+  transform: translateY(0);
+}
+
+.aspect-option.active {
+  background: var(--accent-muted);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
+.aspect-option__preview {
+  position: relative;
+  width: 100%;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  padding: var(--space-sm);
+}
+
+.aspect-option__frame {
+  width: 90%;
+  background: var(--accent-muted);
+  border: 2px solid var(--accent);
+  border-radius: 2px;
+}
+
+.aspect-option__label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.aspect-option__meta {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
 }
 
 

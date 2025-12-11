@@ -58,6 +58,34 @@
             Camera uses back camera by default and requires HTTPS or localhost. Mobile supported.
           </p>
         </footer>
+
+        <section class="landing__info-panel" aria-hidden="true">
+          <div class="landing__info-header">
+            <span>Why 60/30/10?</span>
+            <button type="button" class="landing__info-link" id="ratioToggle" aria-expanded="false">
+              Learn more
+            </button>
+          </div>
+          <div class="landing__info-body" id="ratioContent" hidden>
+            <p>Have you ever seen a photograph, a set design, or a living room that just felt right? This effortless harmony isn’t magic—it’s often the result of a silent, centuries-old agreement on how the human eye processes color. That agreement is the 60:30:10 ratio, the unsung hero of visual balance and the principle at the heart of soLUTion 60:30:10.</p>
+            <h3>The Architecture of Visual Harmony</h3>
+            <p>At its core, 60:30:10 is an elegant framework for assigning roles to color. It ensures that every element on your canvas—be it a digital screen or a physical room—is working in concert, not shouting over one another. It's a guideline, not a rigid law, but one that has stood the test of time across every visual discipline.</p>
+            <ul>
+              <li><strong>60% Primary:</strong> Your anchor, the dominant color that grounds the whole scene.</li>
+              <li><strong>30% Secondary:</strong> The supporting rhythm, adding texture, contrast, and depth.</li>
+              <li><strong>10% Accent:</strong> The spark of energy that directs attention and adds focus.</li>
+            </ul>
+            <p>This proportion succeeds because it taps into our preference for order over chaos. It calms a scene by giving the eye a clear path to follow, making balance feel intentional, even to non-experts.</p>
+            <h3>From Cinema Frames to Living Rooms</h3>
+            <p>In Interior Design, the ratio defines a room’s flow: a neutral wall and large sofa (60%), supporting textures or wood tones (30%), and bold cushions or art (10%). Ignore it and the space feels agitated with competing colors.</p>
+            <p>Photographers and filmmakers rely on it to guide attention: a muted environment (60%), complementary wardrobe or props (30%), and one striking accent (10%). That accent acts as a visual magnet.</p>
+            <p>In Branding, the hero product sits on a dominant background (60%), props fill in 30%, and a metallic highlight or sharp shadow (10%) keeps the hero popping.</p>
+            <h3>Why a Live Guide Matters</h3>
+            <p>You already know when a shot is off, but seeing the math is hard when you’re close to your work. soLUTion 60:30:10 removes guesswork by scoring your composition live.</p>
+            <p>The real-time feedback trains your intuition. As you move props or shift the camera, you see the score rise and fall. Hitting 100% triggers the subtle chime, making strong composition feel like a gentle challenge instead of a chore.</p>
+          </div>
+        </section>
+
       </div>
     </div>
   </section>
@@ -125,9 +153,92 @@
       <!-- Video Stage -->
       <div class="stage" id="stage">
         <video id="v" autoplay muted playsinline></video>
+        <canvas id="aspectMask" class="stage__overlay"></canvas>
         <canvas id="ghost" class="stage__overlay"></canvas>
         <canvas id="c" class="visually-hidden"></canvas>
-        
+
+        <!-- Aspect Ratio Chip (top-right corner) -->
+        <button type="button" class="aspect-chip" id="aspectChip" hidden title="Change aspect ratio">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="20" rx="2"/>
+          </svg>
+          <span class="aspect-chip__label">Native</span>
+        </button>
+
+        <!-- Aspect Ratio Picker (fullscreen overlay) -->
+        <div class="aspect-picker" id="aspectPicker" hidden>
+          <div class="aspect-picker__content">
+            <h2 class="aspect-picker__title">Select Aspect Ratio</h2>
+            <p class="aspect-picker__subtitle">Choose your framing format</p>
+
+            <div class="aspect-picker__grid">
+              <button type="button" class="aspect-option active" data-ratio="native">
+                <div class="aspect-option__preview" style="aspect-ratio: 16/9">
+                  <div class="aspect-option__frame"></div>
+                </div>
+                <span class="aspect-option__label">Native</span>
+                <span class="aspect-option__meta">Full Frame</span>
+              </button>
+
+              <button type="button" class="aspect-option" data-ratio="16:9">
+                <div class="aspect-option__preview" style="aspect-ratio: 16/9">
+                  <div class="aspect-option__frame" style="aspect-ratio: 16/9"></div>
+                </div>
+                <span class="aspect-option__label">16:9</span>
+                <span class="aspect-option__meta">Landscape Video</span>
+              </button>
+
+              <button type="button" class="aspect-option" data-ratio="9:16">
+                <div class="aspect-option__preview" style="aspect-ratio: 16/9">
+                  <div class="aspect-option__frame" style="aspect-ratio: 9/16"></div>
+                </div>
+                <span class="aspect-option__label">9:16</span>
+                <span class="aspect-option__meta">Stories/Reels</span>
+              </button>
+
+              <button type="button" class="aspect-option" data-ratio="4:3">
+                <div class="aspect-option__preview" style="aspect-ratio: 16/9">
+                  <div class="aspect-option__frame" style="aspect-ratio: 4/3"></div>
+                </div>
+                <span class="aspect-option__label">4:3</span>
+                <span class="aspect-option__meta">Classic Photo</span>
+              </button>
+
+              <button type="button" class="aspect-option" data-ratio="1:1">
+                <div class="aspect-option__preview" style="aspect-ratio: 16/9">
+                  <div class="aspect-option__frame" style="aspect-ratio: 1/1"></div>
+                </div>
+                <span class="aspect-option__label">1:1</span>
+                <span class="aspect-option__meta">Square</span>
+              </button>
+
+              <button type="button" class="aspect-option" data-ratio="4:5">
+                <div class="aspect-option__preview" style="aspect-ratio: 16/9">
+                  <div class="aspect-option__frame" style="aspect-ratio: 4/5"></div>
+                </div>
+                <span class="aspect-option__label">4:5</span>
+                <span class="aspect-option__meta">Portrait Photo</span>
+              </button>
+
+              <button type="button" class="aspect-option" data-ratio="2.35:1">
+                <div class="aspect-option__preview" style="aspect-ratio: 16/9">
+                  <div class="aspect-option__frame" style="aspect-ratio: 2.35/1"></div>
+                </div>
+                <span class="aspect-option__label">2.35:1</span>
+                <span class="aspect-option__meta">Cinemascope</span>
+              </button>
+
+              <button type="button" class="aspect-option" data-ratio="3:2">
+                <div class="aspect-option__preview" style="aspect-ratio: 16/9">
+                  <div class="aspect-option__frame" style="aspect-ratio: 3/2"></div>
+                </div>
+                <span class="aspect-option__label">3:2</span>
+                <span class="aspect-option__meta">35mm Film</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
        <!-- Stage Actions Bar (replaces lonely capture button) -->
 <div class="stage-bar" id="stageBar">
   <div class="stage-bar__group">

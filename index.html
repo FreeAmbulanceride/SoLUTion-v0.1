@@ -385,8 +385,14 @@
           </h3>
           <div class="control-card__body">
             <div class="field__info">
-              Analyzes your frame for <strong>3 dominant colors</strong> and measures how close they match the 60/30/10 ratio.
+              Analyzes your frame for <strong>2 dominant colors</strong> (primary &amp; secondary) plus <strong>1 accent</strong>, measuring how close they match 60/30/10.
             </div>
+
+            <label class="field field--inline">
+              <input type="checkbox" id="rawVideo" class="field__checkbox">
+              <span class="field__label">Use raw video</span>
+            </label>
+            <span class="field__hint field__hint--indent">Analyze every pixel without filtering</span>
 
             <label class="field field--inline">
               <input type="checkbox" id="inclNeutrals" class="field__checkbox">

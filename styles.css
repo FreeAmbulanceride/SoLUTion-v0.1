@@ -1554,8 +1554,8 @@ body.pro .control-card.pro-only .control-card__title {
 .readout-stats {
   display: flex;
   align-items: center;
-  gap: var(--space-lg);
-  flex-wrap: wrap;
+  gap: var(--space-md);
+  flex-wrap: nowrap;
   justify-content: center;
 }
 
@@ -1660,7 +1660,8 @@ body.pro .control-card.pro-only .control-card__title {
   
   .readout-stats {
     gap: var(--space-sm);
-    justify-content: space-between;
+    flex-wrap: wrap;
+    justify-content: center;
   }
   
   .stat__label {

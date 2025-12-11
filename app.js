@@ -808,13 +808,16 @@ function setSatUIFromValue(val01){
   if (satCutoffVal) satCutoffVal.textContent = (v/100).toFixed(2);
 }
 function currentSatCutoff(){
-  if (inclNeutrals?.checked) return 0;   // override: include neutrals
+  const rawVideo = $('#rawVideo');
+  if (rawVideo?.checked) return 0;   // raw video mode: no filtering
   const v = +satCutoffEl?.value || 12;   // default 0.12
   return Math.max(0, Math.min(0.99, v/100));
 }
 function refreshSatDisabledState(){
+  // Slider is only disabled in raw video mode
   if (!satCutoffEl) return;
-  satCutoffEl.disabled = !!inclNeutrals?.checked;
+  const rawVideo = $('#rawVideo');
+  satCutoffEl.disabled = !!rawVideo?.checked;
 }
 
 /* =========================
@@ -1064,13 +1067,20 @@ function loop(){
   // sample pixels with saturation/brightness thresholds
   const step = 12;
   const buf  = [];
-  const minSat = currentSatCutoff();  // 0..0.40 from slider (0 if "include neutrals")
-  const minV   = 0.08;                // ignore very dark pixels
+  const rawVideo = $('#rawVideo');
+  const isRaw = rawVideo?.checked;
+  const minSat = currentSatCutoff();  // 0..0.40 from slider (0 if raw video)
+  const minV   = isRaw ? 0 : 0.08;    // ignore very dark pixels (unless raw)
 
   for (let i = 0; i < data.length; i += step){
     const R = data[i], G = data[i+1], B = data[i+2];
     const [, s, v] = rgb2hsv(R, G, B);
-    if ((inclNeutrals.checked || s >= minSat) && v >= minV){
+    // Raw: include all pixels
+    // Include neutrals: include low-sat pixels along with normal filter
+    // Normal: apply sat and value thresholds
+    const passSat = isRaw || inclNeutrals.checked || s >= minSat;
+    const passVal = isRaw || v >= minV;
+    if (passSat && passVal){
       buf.push(R, G, B);
     }
   }
@@ -1223,9 +1233,20 @@ document.addEventListener('DOMContentLoaded', () => {
   
   inclNeutrals?.addEventListener('change', ()=>{
     localStorage.setItem(INCL_NEUTRALS_KEY, inclNeutrals.checked ? '1' : '0');
+    emaPct = null;
+  });
+
+  // Raw video toggle
+  const rawVideoEl = $('#rawVideo');
+  rawVideoEl?.addEventListener('change', ()=>{
+    localStorage.setItem('rawVideo6010', rawVideoEl.checked ? '1' : '0');
     refreshSatDisabledState();
     emaPct = null;
   });
+  // Restore raw video state
+  const savedRaw = localStorage.getItem('rawVideo6010');
+  if (rawVideoEl && savedRaw === '1') rawVideoEl.checked = true;
+  refreshSatDisabledState();
 
   paletteChips = $('#paletteChips');
   paletteExportBtn = $('#paletteExport');

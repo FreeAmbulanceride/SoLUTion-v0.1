@@ -998,21 +998,21 @@ function loop(){
     // If aspect ratio is selected, constrain guides to the cropped area
     if (currentAspectRatio !== 'native' && cropBounds && cropBounds.width && cropBounds.height) {
       // Calculate scale from video resolution to display coordinates
-      var scaleX = gcv.width / (v.videoWidth || gcv.width);
-      var scaleY = gcv.height / (v.videoHeight || gcv.height);
+      var guideScaleX = gcv.width / (v.videoWidth || gcv.width);
+      var guideScaleY = gcv.height / (v.videoHeight || gcv.height);
 
       // Calculate the crop area in display coordinates
-      var cropX = cropBounds.x * scaleX;
-      var cropY = cropBounds.y * scaleY;
-      var cropW = cropBounds.width * scaleX;
-      var cropH = cropBounds.height * scaleY;
+      var guideCropX = cropBounds.x * guideScaleX;
+      var guideCropY = cropBounds.y * guideScaleY;
+      var guideCropW = cropBounds.width * guideScaleX;
+      var guideCropH = cropBounds.height * guideScaleY;
 
       // Offset by the frame rect position (for letterboxing)
       guideRect = {
-        x: guideRect.x + cropX,
-        y: guideRect.y + cropY,
-        w: cropW,
-        h: cropH
+        x: guideRect.x + guideCropX,
+        y: guideRect.y + guideCropY,
+        w: guideCropW,
+        h: guideCropH
       };
     }
 
